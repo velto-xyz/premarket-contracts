@@ -1,0 +1,16 @@
+version: '3'
+
+tasks:
+  sim:
+    desc: Run perp simulation
+    cmds:
+      - bash -c 'source ~/.nvm/nvm.sh && nvm use default && node sim.js'
+
+  watch:
+    desc: Watch and auto-rerun simulation
+    cmds:
+      - bash -c 'source ~/.nvm/nvm.sh && nvm use default && node --watch sim.js'
+
+  default:
+    cmds:
+      - task: sim
