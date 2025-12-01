@@ -1,6 +1,7 @@
 version: '3'
 
 tasks:
+  # ============ Original Simulation ============
   sim:
     desc: Run perp simulation
     cmds:
@@ -10,6 +11,114 @@ tasks:
     desc: Watch and auto-rerun simulation
     cmds:
       - bash -c 'source ~/.nvm/nvm.sh && nvm use default && node --watch sim.js'
+
+  # ============ Contracts ============
+  build:
+    desc: Build contracts with Foundry
+    cmds:
+      - forge build
+
+  test:
+    desc: Run all Foundry tests
+    cmds:
+      - forge test -vvv
+
+  test:gas:
+    desc: Run tests with gas report
+    cmds:
+      - forge test --gas-report
+
+  # ============ Local Node ============
+  node:
+    desc: Start local Anvil node
+    cmds:
+      - anvil --block-time 1 --accounts 10
+
+  # ============ Deployment ============
+  deploy:local:
+    desc: Deploy to local Anvil (production script)
+    cmds:
+      - forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+
+  deploy:dev:
+    desc: Deploy dev environment with test fixtures
+    cmds:
+      - forge script script/DevDeploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+
+  deploy:testnet:
+    desc: Deploy to Base Sepolia testnet
+    cmds:
+      - forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify
+
+  # ============ ABIs ============
+  abi:export:
+    desc: Export contract ABIs to web frontend
+    cmds:
+      - mkdir -p web/src/lib/abi
+      - cp out/PerpFactory.sol/PerpFactory.json web/src/lib/abi/
+      - cp out/PerpEngine.sol/PerpEngine.json web/src/lib/abi/
+      - cp out/PerpMarket.sol/PerpMarket.json web/src/lib/abi/
+      - cp out/PositionManager.sol/PositionManager.json web/src/lib/abi/
+      - cp out/FundingManager.sol/FundingManager.json web/src/lib/abi/
+      - cp out/LiquidationEngine.sol/LiquidationEngine.json web/src/lib/abi/
+      - cp out/MockUSDC.sol/MockUSDC.json web/src/lib/abi/
+      - echo "✓ ABIs exported to web/src/lib/abi/"
+
+  # ============ Web Interface ============
+  web:install:
+    desc: Install web dependencies
+    dir: web
+    cmds:
+      - npm install
+
+  web:dev:
+    desc: Start web dev server
+    dir: web
+    cmds:
+      - npm run dev
+
+  web:build:
+    desc: Build web for production
+    dir: web
+    cmds:
+      - npm run build
+
+  # ============ Keeper Bot ============
+  keeper:install:
+    desc: Install keeper dependencies
+    dir: keeper
+    cmds:
+      - npm install
+
+  keeper:start:
+    desc: Run liquidation keeper bot
+    dir: keeper
+    cmds:
+      - node keeper.js
+
+  keeper:dev:
+    desc: Run keeper with auto-reload
+    dir: keeper
+    cmds:
+      - node --watch keeper.js
+
+  # ============ Full Workflow ============
+  dev:setup:
+    desc: Full setup - build contracts, deploy dev, export ABIs
+    cmds:
+      - task: build
+      - task: deploy:dev
+      - task: abi:export
+
+  dev:start:
+    desc: One-command setup - start Anvil, deploy, create .env.development
+    cmds:
+      - ./scripts/dev-setup.sh
+
+  dev:stop:
+    desc: Stop Anvil node
+    cmds:
+      - ./scripts/stop-anvil.sh
 
   default:
     cmds:

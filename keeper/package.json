@@ -1,0 +1,17 @@
+{
+  "name": "perp-liquidation-keeper",
+  "version": "1.0.0",
+  "description": "Liquidation keeper bot for perpetual futures DEX",
+  "type": "module",
+  "main": "keeper.js",
+  "scripts": {
+    "start": "node keeper.js",
+    "dev": "node --watch keeper.js"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "dotenv": "^16.3.1"
+  },
+  "author": "",
+  "license": "MIT"
+}
