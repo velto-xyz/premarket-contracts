@@ -1,26 +1,17 @@
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useState, useEffect } from 'react';
-import { formatUnits } from 'viem';
 import { useMarketStore } from '../store/marketStore';
+import { usePositionStore } from '../store/positionStore';
 import { PositionHealth } from './PositionHealth';
 import { useSimulationStore } from '../simulation/store/simulationStore';
 import { ABIS } from '../contract-api';
-
-interface Position {
-  id: bigint;
-  isLong: boolean;
-  margin: bigint;
-  leverage: bigint;
-  entryPrice: bigint;
-  baseSize: bigint;
-  user: `0x${string}`;
-}
+import { formatBigInt } from '../utils/format';
 
 export function PositionList() {
   const { address, isConnected } = useAccount();
   const { selectedMarket } = useMarketStore();
   const { botWallets } = useSimulationStore();
-  const [positions, setPositions] = useState<Position[]>([]);
+  const { getUserPositions, positions: allPositions } = usePositionStore();
   const [closingPositionId, setClosingPositionId] = useState<bigint | null>(null);
 
   // Helper to check if an address belongs to a bot
@@ -31,47 +22,13 @@ export function PositionList() {
   const { writeContract, data: closeHash } = useWriteContract();
   const { isLoading: isClosing } = useWaitForTransactionReceipt({ hash: closeHash });
 
-  // Listen for PositionOpened events
-  useWatchContractEvent({
-    address: selectedMarket as `0x${string}`,
-    abi: ABIS.PerpEngine,
-    eventName: 'PositionOpened',
-    onLogs(logs) {
-      logs.forEach((log) => {
-        const userAddr = log.args.user!;
-        const isBot = isBotAddress(userAddr);
-        // Show user's positions AND bot positions during simulation
-        if (userAddr === address || isBot) {
-          const newPosition: Position = {
-            id: log.args.positionId!,
-            isLong: log.args.isLong!,
-            margin: log.args.margin!,
-            leverage: log.args.leverage!,
-            entryPrice: log.args.entryPrice!,
-            baseSize: log.args.baseSize!,
-            user: userAddr,
-          };
-          setPositions((prev) => [...prev, newPosition]);
-        }
-      });
-    },
-  });
+  // Get user positions from store
+  const userPositions = address ? getUserPositions(address) : [];
 
-  // Listen for PositionClosed events
-  useWatchContractEvent({
-    address: selectedMarket as `0x${string}`,
-    abi: ABIS.PerpEngine,
-    eventName: 'PositionClosed',
-    onLogs(logs) {
-      logs.forEach((log) => {
-        const userAddr = log.args.user!;
-        // Remove closed positions from user or bots
-        if (userAddr === address || isBotAddress(userAddr)) {
-          setPositions((prev) => prev.filter((p) => p.id !== log.args.positionId));
-        }
-      });
-    },
-  });
+  // Get bot positions from store
+  const botPositions = Object.values(allPositions).filter(pos =>
+    isBotAddress(pos.user)
+  );
 
   const handleClosePosition = (positionId: bigint) => {
     if (!selectedMarket) return;
@@ -94,9 +51,8 @@ export function PositionList() {
     return <div className="position-list">Select a market first</div>;
   }
 
-  const userPositions = positions.filter(p => p.user === address);
-  const botPositions = positions.filter(p => isBotAddress(p.user));
   const hasSimulationRunning = botPositions.length > 0;
+  const totalPositions = userPositions.length + botPositions.length;
 
   return (
     <div className="position-list">
@@ -104,7 +60,7 @@ export function PositionList() {
 
       {!isConnected && !hasSimulationRunning ? (
         <p className="no-positions">Connect wallet or start simulation to see positions</p>
-      ) : positions.length === 0 ? (
+      ) : totalPositions === 0 ? (
         <p className="no-positions">No open positions</p>
       ) : (
         <div className="positions">
@@ -123,19 +79,19 @@ export function PositionList() {
                   <div className="position-details">
                     <div className="detail-row">
                       <span>Margin:</span>
-                      <span>{formatUnits(position.margin, 18)} USDC</span>
+                      <span>{formatBigInt(position.margin, 18, 2)} USDC</span>
                     </div>
                     <div className="detail-row">
                       <span>Leverage:</span>
-                      <span>{formatUnits(position.leverage, 18)}x</span>
+                      <span>{formatBigInt(position.leverage, 18, 1)}x</span>
                     </div>
                     <div className="detail-row">
                       <span>Entry Price:</span>
-                      <span>${formatUnits(position.entryPrice, 18)}</span>
+                      <span>${formatBigInt(position.entryPrice, 18, 2)}</span>
                     </div>
                     <div className="detail-row">
                       <span>Size:</span>
-                      <span>{formatUnits(position.baseSize, 18)}</span>
+                      <span>{formatBigInt(position.baseSize, 18, 4)}</span>
                     </div>
                   </div>
 
@@ -173,19 +129,19 @@ export function PositionList() {
                   <div className="position-details">
                     <div className="detail-row">
                       <span>Margin:</span>
-                      <span>{formatUnits(position.margin, 18)} USDC</span>
+                      <span>{formatBigInt(position.margin, 18, 2)} USDC</span>
                     </div>
                     <div className="detail-row">
                       <span>Leverage:</span>
-                      <span>{formatUnits(position.leverage, 18)}x</span>
+                      <span>{formatBigInt(position.leverage, 18, 1)}x</span>
                     </div>
                     <div className="detail-row">
                       <span>Entry Price:</span>
-                      <span>${formatUnits(position.entryPrice, 18)}</span>
+                      <span>${formatBigInt(position.entryPrice, 18, 2)}</span>
                     </div>
                     <div className="detail-row">
                       <span>Size:</span>
-                      <span>{formatUnits(position.baseSize, 18)}</span>
+                      <span>{formatBigInt(position.baseSize, 18, 4)}</span>
                     </div>
                   </div>
 

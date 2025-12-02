@@ -10,11 +10,15 @@ import { LiquidationPanel } from './components/LiquidationPanel';
 import { MarketCharts } from './components/MarketCharts';
 import { SimulationControls } from './components/simulation/SimulationControls';
 import { TradeFeed } from './components/TradeFeed';
+import { usePositionSync } from './hooks/usePositionSync';
 import './App.css';
 
 function App() {
   const { isConnected } = useAccount();
   const [sidebarTab, setSidebarTab] = useState<'simulation' | 'trading' | 'liquidations'>('simulation');
+
+  // Centralized position/trade sync - called once at app level
+  usePositionSync();
 
   return (
     <div className="app">

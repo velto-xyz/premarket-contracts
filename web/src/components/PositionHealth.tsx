@@ -1,5 +1,5 @@
-import { formatUnits } from 'viem';
 import { usePositionHealth } from '../hooks/usePositionHealth';
+import { formatBigInt } from '../utils/format';
 
 interface PositionHealthProps {
   positionId: bigint;
@@ -27,7 +27,7 @@ export function PositionHealth({ positionId, margin, leverage }: PositionHealthP
   }
 
   // Calculate liquidation threshold based on leverage
-  const leverageNum = Number(formatUnits(leverage, 18));
+  const leverageNum = Number(leverage) / 1e18;
   let liqThreshold = 10; // 10% for low leverage
   if (leverageNum > 20) {
     liqThreshold = 30; // 30% for >20x
@@ -57,7 +57,7 @@ export function PositionHealth({ positionId, margin, leverage }: PositionHealthP
           <span>PnL:</span>
           <span className={totalPnl >= 0n ? 'positive' : 'negative'}>
             {totalPnl >= 0n ? '+' : ''}
-            {formatUnits(totalPnl, 18)} USDC
+            {formatBigInt(totalPnl, 18, 2)} USDC
           </span>
         </div>
         <div className="health-row">

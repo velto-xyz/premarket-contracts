@@ -33,9 +33,6 @@ export function useMarketData(refreshInterval = 2000): MarketData | null {
   const { selectedMarket } = useMarketStore();
   const [data, setData] = useState<MarketData | null>(null);
 
-  // Debug logs
-  console.log('useMarketData: selectedMarket:', selectedMarket);
-
   // Get market address
   const {
     data: marketAddress,
@@ -163,54 +160,11 @@ export function useMarketData(refreshInterval = 2000): MarketData | null {
     functionName: 'getFundBalances',
   });
 
-  // Log errors
-  useEffect(() => {
-    if (isMarketAddressError) console.error('Error fetching market address:', marketAddressError);
-    if (isBaseReserveError) console.error('Error fetching base reserve:', baseReserveError);
-    if (isQuoteReserveError) console.error('Error fetching quote reserve:', quoteReserveError);
-    if (isMarkPriceError) console.error('Error fetching mark price:', markPriceError);
-    if (isLongOIError) console.error('Error fetching long OI:', longOIError);
-    if (isShortOIError) console.error('Error fetching short OI:', shortOIError);
-    if (isCarryIndexError) console.error('Error fetching carry index:', carryIndexError);
-    if (isLastUpdateBlockError) console.error('Error fetching last update block:', lastUpdateBlockError);
-    if (isFundBalancesError) console.error('Error fetching fund balances:', fundBalancesError);
-  }, [
-    isMarketAddressError, marketAddressError,
-    isBaseReserveError, baseReserveError,
-    isQuoteReserveError, quoteReserveError,
-    isMarkPriceError, markPriceError,
-    isLongOIError, longOIError,
-    isShortOIError, shortOIError,
-    isCarryIndexError, carryIndexError,
-    isLastUpdateBlockError, lastUpdateBlockError,
-    isFundBalancesError, fundBalancesError
-  ]);
-
-  // Debug effect to log data loading state
-  useEffect(() => {
-    console.log('Market data loading state:', {
-      marketAddress,
-      hasBaseReserve: !!baseReserve,
-      hasQuoteReserve: !!quoteReserve,
-      hasMarkPrice: !!markPrice,
-      hasLongOI: !!longOI,
-      hasShortOI: !!shortOI,
-      hasCarryIndex: !!carryIndex,
-      hasLastUpdateBlock: !!lastUpdateBlock,
-      hasFundBalances: !!fundBalances
-    });
-  }, [marketAddress, baseReserve, quoteReserve, markPrice, longOI, shortOI, carryIndex, lastUpdateBlock, fundBalances]);
-
   // Refresh data on interval
   useEffect(() => {
-    if (!selectedMarket) {
-      console.log('No market selected, skipping data refresh');
-      return;
-    }
+    if (!selectedMarket) return;
 
-    console.log('Starting data refresh interval');
     const interval = setInterval(() => {
-      console.log('Refreshing market data...');
       refetchBaseReserve();
       refetchQuoteReserve();
       refetchMarkPrice();
@@ -220,28 +174,15 @@ export function useMarketData(refreshInterval = 2000): MarketData | null {
       refetchFunds();
     }, refreshInterval);
 
-    return () => {
-      console.log('Clearing data refresh interval');
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [selectedMarket, refreshInterval, refetchBaseReserve, refetchQuoteReserve, refetchMarkPrice, refetchLongOI, refetchShortOI, refetchCarry, refetchFunds]);
 
   // Combine all data
   useEffect(() => {
     if (!baseReserve || !quoteReserve || !markPrice || !longOI || !shortOI || !carryIndex || !fundBalances) {
-      console.log('Waiting for all data to load...', {
-        hasBaseReserve: !!baseReserve,
-        hasQuoteReserve: !!quoteReserve,
-        hasMarkPrice: !!markPrice,
-        hasLongOI: !!longOI,
-        hasShortOI: !!shortOI,
-        hasCarryIndex: !!carryIndex,
-        hasFundBalances: !!fundBalances
-      });
       return;
     }
 
-    console.log('All data loaded, updating market data...');
     const netOI = BigInt(longOI) - BigInt(shortOI);
     const newData = {
       baseReserve,
@@ -258,7 +199,6 @@ export function useMarketData(refreshInterval = 2000): MarketData | null {
       timestamp: Date.now(),
     };
 
-    console.log('New market data:', newData);
     setData(newData);
   }, [baseReserve, quoteReserve, markPrice, longOI, shortOI, carryIndex, lastUpdateBlock, fundBalances]);
 

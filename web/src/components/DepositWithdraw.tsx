@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits } from 'viem';
 import { useMarketStore } from '../store/marketStore';
 import { ABIS } from '../contract-api';
+import { formatBigInt } from '../utils/format';
 
 const USDC_ADDRESS = import.meta.env.VITE_USDC_ADDRESS as `0x${string}`;
 
@@ -141,8 +142,8 @@ export function DepositWithdraw() {
       <h2>Wallet</h2>
 
       <div className="balances">
-        <p>USDC Balance: {usdcBalance ? formatUnits(usdcBalance, 6) : '0'} USDC</p>
-        <p>Engine Balance: {walletBalance ? formatUnits(walletBalance, 18) : '0'} USDC</p>
+        <p>USDC Balance: {usdcBalance ? formatBigInt(usdcBalance, 6, 2) : '0.00'} USDC</p>
+        <p>Engine Balance: {walletBalance ? formatBigInt(walletBalance, 18, 2) : '0.00'} USDC</p>
       </div>
 
       <div className="deposit-withdraw-form">

@@ -21,6 +21,15 @@ export function usePositionHealth(positionId: bigint | null): PositionHealth | n
     address: selectedMarket as `0x${string}`,
     abi: ABIS.PerpEngine,
     functionName: 'positionManager',
+    query: { enabled: !!selectedMarket },
+  });
+
+  // Get PerpMarket address
+  const { data: marketAddress } = useReadContract({
+    address: selectedMarket as `0x${string}`,
+    abi: ABIS.PerpEngine,
+    functionName: 'market',
+    query: { enabled: !!selectedMarket },
   });
 
   // Get LiquidationEngine address
@@ -28,6 +37,7 @@ export function usePositionHealth(positionId: bigint | null): PositionHealth | n
     address: selectedMarket as `0x${string}`,
     abi: ABIS.PerpEngine,
     functionName: 'liquidationEngine',
+    query: { enabled: !!selectedMarket },
   });
 
   // Get position data
@@ -36,27 +46,49 @@ export function usePositionHealth(positionId: bigint | null): PositionHealth | n
     abi: ABIS.PositionManager,
     functionName: 'getPosition',
     args: positionId ? [positionId] : undefined,
+    query: { enabled: !!positionManagerAddress && !!positionId },
   });
 
-  // Get health metrics
+  // Get health metrics from simulateEquityIfClosed
   const { data: healthData } = useReadContract({
-    address: liquidationEngineAddress as `0x${string}`,
-    abi: ABIS.LiquidationEngine,
-    functionName: 'getPositionHealth',
+    address: positionManagerAddress as `0x${string}`,
+    abi: ABIS.PositionManager,
+    functionName: 'simulateEquityIfClosed',
     args: positionId ? [positionId] : undefined,
+    query: { enabled: !!positionManagerAddress && !!positionId },
   });
 
-  // Check if liquidatable
-  const { data: isLiquidatable } = useReadContract({
+  // Get mark price from market
+  const { data: markPrice } = useReadContract({
+    address: marketAddress as `0x${string}`,
+    abi: ABIS.PerpMarket,
+    functionName: 'getMarkPrice',
+    query: { enabled: !!marketAddress },
+  });
+
+  // Check if liquidatable (requires all three addresses)
+  const { data: isLiquidatableResult } = useReadContract({
     address: liquidationEngineAddress as `0x${string}`,
     abi: ABIS.LiquidationEngine,
     functionName: 'isLiquidatable',
-    args: positionId ? [positionId] : undefined,
+    args: positionManagerAddress && marketAddress && positionId
+      ? [positionManagerAddress, marketAddress, positionId]
+      : undefined,
+    query: {
+      enabled: !!liquidationEngineAddress && !!positionManagerAddress && !!marketAddress && !!positionId
+    },
   });
 
-  if (!healthData || !position) return null;
+  if (!healthData || !position || !markPrice) return null;
 
-  const [markPrice, notionalNow, pnlTrade, carryPnl, totalPnl, equityIfClosed] = healthData;
+  // healthData from simulateEquityIfClosed returns:
+  // [closeNotional, avgClosePrice, pnlTrade, carryPnl, totalPnl, equityIfClosed]
+  const [closeNotional, avgClosePrice, pnlTrade, carryPnl, totalPnl, equityIfClosed] = healthData as readonly [
+    bigint, bigint, bigint, bigint, bigint, bigint
+  ];
+
+  // Calculate notionalNow = baseSize * markPrice / PRECISION
+  const notionalNow = (position.baseSize * markPrice) / 1_000_000_000_000_000_000n;
 
   // Calculate health ratio (equity / margin)
   // 100% = healthy, <20% = liquidatable for high leverage
@@ -81,7 +113,7 @@ export function usePositionHealth(positionId: bigint | null): PositionHealth | n
     carryPnl,
     totalPnl,
     equityIfClosed,
-    isLiquidatable: isLiquidatable || false,
+    isLiquidatable: isLiquidatableResult || false,
     healthRatio,
   };
 }

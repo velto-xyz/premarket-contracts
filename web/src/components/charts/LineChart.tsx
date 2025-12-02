@@ -69,13 +69,7 @@ export function LineChart({ data, title, color = '#2563eb', height = 200 }: Line
     if (!seriesRef.current || !chartRef.current || data.length === 0) return;
     
     try {
-      // Convert timestamp to seconds if it's in milliseconds
-      const formattedData = data.map(item => ({
-        ...item,
-        time: (item.time as number) > 1e12 ? Math.floor((item.time as number) / 1000) : item.time
-      }));
-      
-      seriesRef.current.setData(formattedData);
+      seriesRef.current.setData(data);
       chartRef.current.timeScale().fitContent();
       
       // Force a resize to ensure the chart updates

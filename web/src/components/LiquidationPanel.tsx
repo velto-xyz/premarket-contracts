@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatUnits } from 'viem';
 import { useMarketStore } from '../store/marketStore';
 import { ABIS } from '../contract-api';
+import { formatBigInt } from '../utils/format';
 
 interface LiquidatablePosition {
   id: bigint;
@@ -131,7 +131,7 @@ export function LiquidationPanel() {
       <div className="liquidation-info">
         <div className="info-row">
           <span>Liquidation Fee:</span>
-          <span>{liqFeeRatio ? formatUnits(liqFeeRatio, 18) : '0.5'}%</span>
+          <span>{liqFeeRatio ? formatBigInt(liqFeeRatio, 18, 1) : '0.5'}%</span>
         </div>
         <div className="info-row">
           <span>Total Positions:</span>

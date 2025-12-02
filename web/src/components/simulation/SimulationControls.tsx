@@ -3,8 +3,8 @@ import { useSimulationStore } from '../../simulation/store/simulationStore';
 import { SCENARIOS, type ScenarioType } from '../../simulation/scenarios';
 import { SimulationEngine } from '../../simulation/core/SimulationEngine';
 import { useMarketStore } from '../../store/marketStore';
-import { formatUnits } from 'viem';
 import { ABIS } from '../../contract-api';
+import { formatCompact } from '../../utils/format';
 
 /**
  * SimulationControls: UI panel for controlling bot trading simulation
@@ -112,23 +112,14 @@ export function SimulationControls() {
   };
 
   const formatVolume = (volume: bigint): string => {
-    const num = Number(formatUnits(volume, 18));
-    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`;
-    if (num >= 1_000) return `$${(num / 1_000).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
+    const num = Number(volume) / 1e18;
+    return `$${formatCompact(num)}`;
   };
 
   const formatPnL = (pnl: bigint): string => {
-    const num = Number(formatUnits(pnl, 18));
+    const num = Number(pnl) / 1e18;
     const sign = num >= 0 ? '+' : '';
-
-    if (Math.abs(num) >= 1_000_000) {
-      return `${sign}$${(num / 1_000_000).toFixed(2)}M`;
-    }
-    if (Math.abs(num) >= 1_000) {
-      return `${sign}$${(num / 1_000).toFixed(2)}K`;
-    }
-    return `${sign}$${num.toFixed(2)}`;
+    return `${sign}$${formatCompact(Math.abs(num))}`;
   };
 
   const getUptime = (): string => {
