@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
-import { useReadContract } from 'wagmi';
+import { useReadContract, useChainId } from 'wagmi';
 import { useMarketStore } from '../store/marketStore';
-import { ABIS } from '../contract-api';
-
-const FACTORY_ADDRESS = import.meta.env.VITE_FACTORY_ADDRESS as `0x${string}`;
+import { ABIS, getContractAddresses } from '../contract-api';
 
 // Market display names mapped by index
 const MARKET_NAMES: Record<number, string> = {
@@ -14,11 +12,14 @@ const MARKET_NAMES: Record<number, string> = {
 
 export function MarketSelector() {
   const { selectedMarket, setSelectedMarket } = useMarketStore();
+  const chainId = useChainId();
+  const addresses = getContractAddresses(chainId);
 
   const { data: markets, isError, isLoading, error } = useReadContract({
-    address: FACTORY_ADDRESS,
+    address: addresses.factory,
     abi: ABIS.PerpFactory,
     functionName: 'getAllMarkets',
+    query: { enabled: !!addresses.factory },
   });
 
   // Auto-select first market if none selected and markets are loaded
@@ -33,7 +34,7 @@ export function MarketSelector() {
 
     const errorStr = error.toString();
     if (errorStr.includes('does not have any code') || errorStr.includes('no code at address')) {
-      return `⚠️ Factory contract not deployed at ${FACTORY_ADDRESS}`;
+      return `⚠️ Factory contract not deployed at ${addresses.factory}`;
     }
     if (errorStr.includes('execution reverted')) {
       return '⚠️ Contract execution reverted';

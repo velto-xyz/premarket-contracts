@@ -101,7 +101,8 @@ export class SimulationEngine {
           account.index,
           strategyType,
           botWalletClient,
-          this.publicClient
+          this.publicClient,
+          31337 // Anvil chainId
         );
         this.bots.push(bot);
 

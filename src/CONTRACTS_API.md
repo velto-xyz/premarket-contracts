@@ -51,7 +51,37 @@
 - `getFundBalances() returns (uint256 trade, uint256 insurance, uint256 protocol)` - Get fund balances
 
 ## PerpFactory
-- `createMarket(address collateralToken, MarketConfig) returns (address engineAddress)` - Deploy new market
+
+### Access Control
+Inherits from OpenZeppelin's `Ownable`. Market creation is restricted to authorized addresses.
+
+### State Variables
+- `owner() returns (address)` - Current factory owner (from Ownable)
+- `isMarketCreator(address) returns (bool)` - Check if address can create markets
+- `liquidationEngine() returns (address)` - Shared liquidation engine for all markets
+- `fundingManager() returns (address)` - Shared funding manager for all markets
+- `markets(uint256) returns (address)` - Get market by index
+- `isEngine(address) returns (bool)` - Check if address is a deployed engine
+
+### Owner Functions
+- `setMarketCreator(address creator, bool authorized)` - Authorize/revoke market creation rights (owner only)
+- `transferOwnership(address newOwner)` - Transfer ownership (owner only, from Ownable)
+- `renounceOwnership()` - Renounce ownership (owner only, from Ownable)
+
+### Market Creator Functions
+- `createMarket(address collateralToken, MarketConfig) returns (address engineAddress)` - Deploy new market (requires owner or authorized market creator)
+
+### Public View Functions
 - `getMarketCount() returns (uint256)` - Total deployed markets
 - `getMarket(uint256 index) returns (address)` - Get engine by index
 - `getAllMarkets() returns (address[])` - Get all engine addresses
+
+### Events
+- `MarketCreated(uint256 indexed marketIndex, address indexed engine, address market, address collateralToken)` - Emitted when market created
+- `MarketCreatorUpdated(address indexed creator, bool authorized)` - Emitted when creator authorization changes
+- `OwnershipTransferred(address indexed previousOwner, address indexed newOwner)` - Emitted when ownership transfers (from Ownable)
+
+### Errors
+- `Unauthorized()` - Caller not authorized to create markets
+- `InvalidReserves()` - Reserve parameters invalid (zero values)
+- `InvalidLeverage()` - Leverage parameter invalid (zero or >30x)

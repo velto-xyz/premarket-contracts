@@ -8,12 +8,13 @@ import { decodeContractError } from './errors';
  */
 export class MockUSDCService {
   constructor(
+    private chainId: number,
     private publicClient: PublicClient,
     private walletClient?: WalletClient
   ) {}
 
   async decimals(): Promise<number> {
-    const addresses = getContractAddresses();
+    const addresses = getContractAddresses(this.chainId);
     const decimals = await this.publicClient.readContract({
       address: addresses.usdc,
       abi: ABIS.MockUSDC,
@@ -23,7 +24,7 @@ export class MockUSDCService {
   }
 
   async balanceOf(address: Address): Promise<bigint> {
-    const addresses = getContractAddresses();
+    const addresses = getContractAddresses(this.chainId);
     const balance = await this.publicClient.readContract({
       address: addresses.usdc,
       abi: ABIS.MockUSDC,
@@ -37,7 +38,7 @@ export class MockUSDCService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const account = this.walletClient.account;
       if (!account) throw new Error('No account connected');
 
@@ -63,7 +64,7 @@ export class MockUSDCService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const account = this.walletClient.account;
       if (!account) throw new Error('No account connected');
 
@@ -88,7 +89,7 @@ export class MockUSDCService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const account = this.walletClient.account;
       if (!account) throw new Error('No account connected');
 

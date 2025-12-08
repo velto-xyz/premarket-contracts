@@ -19,6 +19,7 @@ await service.helpers.approveAndDeposit(addr, amount);
 ```ts
 Position { id, user, isLong, baseSize, entryPrice, entryNotional, margin, carrySnapshot, openBlock, status, realizedPnl }
 MarketData { marketAddress, baseReserve, quoteReserve, markPrice, longOI, shortOI, netOI, carryIndex, currentBlock, lastFundingBlock, tradeFund, insuranceFund, protocolFees, timestamp }
+MarketConfig { baseReserve, quoteReserve, maxLeverage }
 LiquidationInfo { isLiquidatable, currentLoss, allowedLoss, equity, leverage }
 PositionEquity { closeNotional, avgClosePrice, pnlTrade, carryPnl, totalPnl, equityIfClosed }
 ```
@@ -77,10 +78,22 @@ PositionEquity { closeNotional, avgClosePrice, pnlTrade, carryPnl, totalPnl, equ
 
 ## PerpFactoryService
 
-- `createMarket(collateral, baseReserve, quoteReserve): Promise<{txHash, engineAddress?}>` - Deploy new market
+### Access Control
+- `owner(): Promise<Address>` - Get current factory owner
+- `isMarketCreator(address): Promise<boolean>` - Check if address can create markets
+- `setMarketCreator(creator, authorized): Promise<{txHash}>` - Authorize/revoke market creation rights (owner only)
+- `transferOwnership(newOwner): Promise<{txHash}>` - Transfer ownership (owner only)
+
+### Market Management
+- `createMarket(collateral, baseReserve, quoteReserve, maxLeverage): Promise<{txHash, engineAddress?}>` - Deploy new market (requires owner or authorized market creator)
 - `getMarketCount(): Promise<bigint>` - Total deployed markets
 - `getMarket(index): Promise<Address>` - Get engine by index
 - `getAllMarkets(): Promise<Address[]>` - Get all engine addresses
+- `isEngine(address): Promise<boolean>` - Check if address is a deployed engine
+
+### State Variables
+- `liquidationEngine(): Promise<Address>` - Get shared liquidation engine address
+- `fundingManager(): Promise<Address>` - Get shared funding manager address
 
 ## HelperService
 
@@ -101,6 +114,14 @@ try {
   console.error(error.message); // "Contract Error: InsufficientBalance"
 }
 ```
+
+### Common Errors
+- `Unauthorized()` - Caller not authorized (PerpFactory market creation)
+- `InsufficientBalance()` - Not enough balance for operation
+- `InvalidReserves()` - Invalid reserve parameters (PerpFactory)
+- `InvalidLeverage()` - Invalid leverage parameter (PerpFactory: 0 or >30x)
+- `PositionNotOpen()` - Position not open or doesn't exist
+- `PositionNotLiquidatable()` - Position health above liquidation threshold
 
 ## Notes
 

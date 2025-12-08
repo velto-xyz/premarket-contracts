@@ -41,11 +41,16 @@ else
     ANVIL_RUNNING=false
 fi
 
-# 4. Deploy contracts
+# 4. Deploy core contracts
 echo ""
-echo "4️⃣  Deploying contracts..."
+echo "4️⃣  Deploying core contracts..."
 export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-forge script script/DevDeploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --legacy
+forge script script/01_DeployCore.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+
+# 5. Setup local environment (MockUSDC + markets)
+echo ""
+echo "5️⃣  Setting up local environment..."
+forge script script/02_SetupLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 
 echo ""
 echo "✅ Setup complete!"

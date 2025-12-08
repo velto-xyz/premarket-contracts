@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 tasks:
   # ============ Original Simulation ============
   sim:
@@ -36,19 +38,17 @@ tasks:
 
   # ============ Deployment ============
   deploy:local:
-    desc: Deploy to local Anvil (production script)
+    desc: Full local deployment - core + setup
     cmds:
-      - forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
-
-  deploy:dev:
-    desc: Deploy dev environment with test fixtures
-    cmds:
-      - forge script script/DevDeploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - forge script script/01_DeployCore.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - forge script script/02_SetupLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - task: abi:export
 
   deploy:testnet:
-    desc: Deploy to Base Sepolia testnet
+    desc: Deploy core to testnet
     cmds:
-      - forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify
+      - forge script script/01_DeployCore.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
+      - task: abi:export
 
   # ============ ABIs ============
   abi:export:
@@ -107,8 +107,7 @@ tasks:
     desc: Full setup - build contracts, deploy dev, export ABIs
     cmds:
       - task: build
-      - task: deploy:dev
-      - task: abi:export
+      - task: deploy:local
 
   dev:start:
     desc: One-command setup - start Anvil, deploy, create .env.development

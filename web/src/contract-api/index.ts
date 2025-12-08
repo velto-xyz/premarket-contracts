@@ -22,18 +22,21 @@ export class ContractService {
   engine: PerpEngineService;
   factory: PerpFactoryService;
   helpers: HelperService;
+  chainId: number;
 
   constructor(
+    chainId: number,
     publicClient: PublicClient,
     walletClient?: WalletClient
   ) {
-    this.usdc = new MockUSDCService(publicClient, walletClient);
-    this.liquidationEngine = new LiquidationEngineService(publicClient);
+    this.chainId = chainId;
+    this.usdc = new MockUSDCService(chainId, publicClient, walletClient);
+    this.liquidationEngine = new LiquidationEngineService(chainId, publicClient);
     this.market = new PerpMarketService(publicClient);
     this.positionManager = new PositionManagerService(publicClient);
     this.fundingManager = new FundingManagerService(publicClient);
     this.engine = new PerpEngineService(publicClient, walletClient);
-    this.factory = new PerpFactoryService(publicClient, walletClient);
+    this.factory = new PerpFactoryService(chainId, publicClient, walletClient);
     this.helpers = new HelperService(publicClient, walletClient, this.usdc, this.engine);
   }
 }

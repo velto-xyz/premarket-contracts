@@ -30,14 +30,15 @@ export class BotAgent {
     accountIndex: number,
     strategyType: StrategyType,
     walletClient: WalletClient,
-    publicClient: PublicClient
+    publicClient: PublicClient,
+    chainId: number = 31337 // Default to Anvil
   ) {
     this.id = id;
     this.walletAddress = walletAddress;
     this.accountIndex = accountIndex;
 
     // Initialize ContractService for this bot
-    this.service = new ContractService(publicClient, walletClient);
+    this.service = new ContractService(chainId, publicClient, walletClient);
 
     // Initialize strategy based on type
     switch (strategyType) {

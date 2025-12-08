@@ -1,6 +1,6 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-import { useState } from 'react';
+import { useAccount, useChainId } from 'wagmi';
+import { useState, useEffect } from 'react';
 import { MarketSelector } from './components/MarketSelector';
 import { CreateMarket } from './components/CreateMarket';
 import { DepositWithdraw } from './components/DepositWithdraw';
@@ -13,9 +13,23 @@ import { TradeFeed } from './components/TradeFeed';
 import { usePositionSync } from './hooks/usePositionSync';
 import './App.css';
 
+const ANVIL_CHAIN_ID = 31337;
+
 function App() {
   const { isConnected } = useAccount();
-  const [sidebarTab, setSidebarTab] = useState<'simulation' | 'trading' | 'liquidations'>('simulation');
+  const chainId = useChainId();
+  const isAnvil = chainId === ANVIL_CHAIN_ID;
+
+  const [sidebarTab, setSidebarTab] = useState<'simulation' | 'trading' | 'liquidations'>(
+    isAnvil ? 'simulation' : 'trading'
+  );
+
+  // Switch to trading tab when switching away from Anvil
+  useEffect(() => {
+    if (!isAnvil && sidebarTab === 'simulation') {
+      setSidebarTab('trading');
+    }
+  }, [isAnvil, sidebarTab]);
 
   // Centralized position/trade sync - called once at app level
   usePositionSync();
@@ -51,13 +65,15 @@ function App() {
         {/* Right Sidebar - Tabbed Tools */}
         <aside className="sidebar">
           <div className="sidebar-tabs">
-            <button
-              className={sidebarTab === 'simulation' ? 'active' : ''}
-              onClick={() => setSidebarTab('simulation')}
-              title="Trading Simulation"
-            >
-              🤖 Simulation
-            </button>
+            {isAnvil && (
+              <button
+                className={sidebarTab === 'simulation' ? 'active' : ''}
+                onClick={() => setSidebarTab('simulation')}
+                title="Trading Simulation (Anvil only)"
+              >
+                🤖 Simulation
+              </button>
+            )}
             <button
               className={sidebarTab === 'trading' ? 'active' : ''}
               onClick={() => setSidebarTab('trading')}
@@ -75,7 +91,7 @@ function App() {
           </div>
 
           <div className="sidebar-content">
-            {sidebarTab === 'simulation' && <SimulationControls />}
+            {isAnvil && sidebarTab === 'simulation' && <SimulationControls />}
 
             {sidebarTab === 'trading' && (
               <div className="trading-panel">

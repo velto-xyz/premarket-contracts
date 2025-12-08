@@ -9,6 +9,7 @@ import { decodeContractError } from './errors';
  */
 export class PerpFactoryService {
   constructor(
+    private chainId: number,
     private publicClient: PublicClient,
     private walletClient?: WalletClient
   ) {}
@@ -16,12 +17,13 @@ export class PerpFactoryService {
   async createMarket(
     collateralToken: Address,
     baseReserve: bigint,
-    quoteReserve: bigint
+    quoteReserve: bigint,
+    maxLeverage?: bigint
   ): Promise<{ txHash: string; engineAddress?: Address }> {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const account = this.walletClient.account;
       if (!account) throw new Error('No account connected');
 
@@ -29,7 +31,7 @@ export class PerpFactoryService {
         address: addresses.factory,
         abi: ABIS.PerpFactory,
         functionName: 'createMarket',
-        args: [collateralToken, { baseReserve, quoteReserve, maxLeverage: 30n * 10n ** 18n }],
+        args: [collateralToken, { baseReserve, quoteReserve, maxLeverage: maxLeverage || 30n * 10n ** 18n }],
         account: account.address,
       });
 
@@ -54,7 +56,7 @@ export class PerpFactoryService {
 
   async getMarketCount(): Promise<bigint> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const count = await this.publicClient.readContract({
         address: addresses.factory,
         abi: ABIS.PerpFactory,
@@ -70,7 +72,7 @@ export class PerpFactoryService {
 
   async getMarket(index: bigint): Promise<Address> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const engineAddress = await this.publicClient.readContract({
         address: addresses.factory,
         abi: ABIS.PerpFactory,
@@ -87,7 +89,7 @@ export class PerpFactoryService {
 
   async getAllMarkets(): Promise<Address[]> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const markets = await this.publicClient.readContract({
         address: addresses.factory,
         abi: ABIS.PerpFactory,

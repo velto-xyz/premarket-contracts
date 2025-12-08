@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useChainId } from 'wagmi';
 import { useSimulationStore } from '../../simulation/store/simulationStore';
 import { SCENARIOS, type ScenarioType } from '../../simulation/scenarios';
 import { SimulationEngine } from '../../simulation/core/SimulationEngine';
 import { useMarketStore } from '../../store/marketStore';
-import { ABIS } from '../../contract-api';
+import { ABIS, getContractAddresses } from '../../contract-api';
 import { formatCompact } from '../../utils/format';
 
 /**
@@ -26,27 +27,26 @@ export function SimulationControls() {
   } = useSimulationStore();
 
   const { selectedMarket } = useMarketStore();
+  const chainId = useChainId();
+  const addresses = getContractAddresses(chainId);
   const [isExpanded, setIsExpanded] = useState(true);
   const [engine, setEngine] = useState<SimulationEngine | null>(null);
 
   const handleStart = async () => {
     if (status === 'stopped' && selectedMarket) {
-      // Get contract addresses from env
-      const usdcAddress = import.meta.env.VITE_USDC_ADDRESS as `0x${string}`;
-
-      if (!selectedMarket || !usdcAddress) {
+      if (!selectedMarket || !addresses.usdc) {
         console.error('Missing contract addresses');
         return;
       }
 
       console.log('🎮 Initializing simulation engine...');
       console.log('  Market:', selectedMarket);
-      console.log('  USDC:', usdcAddress);
+      console.log('  USDC:', addresses.usdc);
 
       // Create new engine instance
       const newEngine = new SimulationEngine(
         selectedMarket as `0x${string}`,
-        usdcAddress,
+        addresses.usdc,
         ABIS.PerpEngine,
         ABIS.MockUSDC
       );

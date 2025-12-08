@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {PerpEngine} from "./PerpEngine.sol";
 import {PerpMarket} from "./PerpMarket.sol";
 import {PositionManager} from "./PositionManager.sol";
@@ -19,8 +20,13 @@ import {LiquidationEngine} from "./LiquidationEngine.sol";
  * LiquidationEngine is shared across all markets for gas efficiency.
  *
  * This enables multiple markets (ETH-PERP, BTC-PERP, etc.) with different configurations
+ *
+ * Access Control:
+ * - Owner can create markets
+ * - Owner can authorize other addresses to create markets
+ * - Owner can transfer ownership
  */
-contract PerpFactory {
+contract PerpFactory is Ownable {
     // ============ Structs ============
 
     struct MarketConfig {
@@ -43,6 +49,9 @@ contract PerpFactory {
     /// @notice Check if an address is a deployed engine
     mapping(address => bool) public isEngine;
 
+    /// @notice Addresses authorized to create markets
+    mapping(address => bool) public isMarketCreator;
+
     // ============ Events ============
 
     event MarketCreated(
@@ -52,23 +61,51 @@ contract PerpFactory {
         address collateralToken
     );
 
+    event MarketCreatorUpdated(address indexed creator, bool authorized);
+
     // ============ Errors ============
 
     error InvalidReserves();
     error InvalidLeverage();
+    error Unauthorized();
 
     // ============ Constructor ============
 
-    constructor(LiquidationEngine _liquidationEngine, FundingManager _fundingManager) {
+    constructor(LiquidationEngine _liquidationEngine, FundingManager _fundingManager)
+        Ownable(msg.sender)
+    {
         liquidationEngine = _liquidationEngine;
         fundingManager = _fundingManager;
+        // Owner is automatically authorized to create markets
+        isMarketCreator[msg.sender] = true;
+    }
+
+    // ============ Modifiers ============
+
+    modifier onlyMarketCreator() {
+        if (!isMarketCreator[msg.sender] && msg.sender != owner()) {
+            revert Unauthorized();
+        }
+        _;
     }
 
     // ============ External Functions ============
 
     /**
+     * @notice Authorize or revoke an address to create markets
+     * @dev Only owner can call this
+     * @param creator Address to authorize/revoke
+     * @param authorized True to authorize, false to revoke
+     */
+    function setMarketCreator(address creator, bool authorized) external onlyOwner {
+        isMarketCreator[creator] = authorized;
+        emit MarketCreatorUpdated(creator, authorized);
+    }
+
+    /**
      * @notice Create a new perpetual futures market
      * @dev Deploys all necessary contracts for an isolated market
+     *      Only owner or authorized market creators can call this
      *
      * @param collateralToken Address of collateral token (e.g., USDC)
      * @param config Market configuration parameters
@@ -76,6 +113,7 @@ contract PerpFactory {
      */
     function createMarket(address collateralToken, MarketConfig memory config)
         public
+        onlyMarketCreator
         returns (address engineAddress)
     {
         // Validation

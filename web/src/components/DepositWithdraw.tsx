@@ -1,29 +1,29 @@
 import { useState } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseUnits } from 'viem';
 import { useMarketStore } from '../store/marketStore';
-import { ABIS } from '../contract-api';
+import { ABIS, getContractAddresses } from '../contract-api';
 import { formatBigInt } from '../utils/format';
-
-const USDC_ADDRESS = import.meta.env.VITE_USDC_ADDRESS as `0x${string}`;
 
 export function DepositWithdraw() {
   const { address, isConnected } = useAccount();
   const { selectedMarket } = useMarketStore();
+  const chainId = useChainId();
+  const addresses = getContractAddresses(chainId);
   const [amount, setAmount] = useState('');
   const [isDeposit, setIsDeposit] = useState(true);
   const [status, setStatus] = useState('');
 
   const { data: usdcBalance } = useReadContract({
-    address: USDC_ADDRESS,
+    address: addresses.usdc,
     abi: ABIS.MockUSDC,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
   });
 
   const { data: allowance } = useReadContract({
-    address: USDC_ADDRESS,
+    address: addresses.usdc,
     abi: ABIS.MockUSDC,
     functionName: 'allowance',
     args: address && selectedMarket ? [address, selectedMarket as `0x${string}`] : undefined,
@@ -52,7 +52,7 @@ export function DepositWithdraw() {
         await new Promise<void>((resolve, reject) => {
           writeContract(
             {
-              address: USDC_ADDRESS,
+              address: addresses.usdc,
               abi: ABIS.MockUSDC,
               functionName: 'approve',
               args: [selectedMarket as `0x${string}`, usdcAmount],

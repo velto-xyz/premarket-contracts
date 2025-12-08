@@ -8,7 +8,10 @@ import type { LiquidationInfo } from './types';
  * Handles liquidation checks and calculations
  */
 export class LiquidationEngineService {
-  constructor(private publicClient: PublicClient) {}
+  constructor(
+    private chainId: number,
+    private publicClient: PublicClient
+  ) {}
 
   async isLiquidatable(
     positionManagerAddress: Address,
@@ -16,7 +19,7 @@ export class LiquidationEngineService {
     positionId: bigint
   ): Promise<boolean> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       // TODO: Get actual liquidation engine address from factory
       const liquidationEngine = addresses.factory;
 
@@ -40,7 +43,7 @@ export class LiquidationEngineService {
     positionId: bigint
   ): Promise<LiquidationInfo> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const liquidationEngine = addresses.factory;
 
       const result = await this.publicClient.readContract({
@@ -71,7 +74,7 @@ export class LiquidationEngineService {
     positionId: bigint
   ): Promise<bigint> {
     try {
-      const addresses = getContractAddresses();
+      const addresses = getContractAddresses(this.chainId);
       const liquidationEngine = addresses.factory;
 
       const fee = await this.publicClient.readContract({
