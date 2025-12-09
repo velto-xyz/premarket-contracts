@@ -6,7 +6,7 @@ import { formatBigInt, formatBigIntUSD, formatAddress, formatTimeAgo } from '../
 export function TradeFeed() {
   const { selectedMarket } = useMarketStore();
   const { botWallets } = useSimulationStore();
-  const { trades } = useTradeStore();
+  const { getTradesByMarket } = useTradeStore();
 
   const isBotAddress = (addr: `0x${string}`): boolean => {
     return botWallets.some(bot => bot.address.toLowerCase() === addr.toLowerCase());
@@ -22,15 +22,18 @@ export function TradeFeed() {
     );
   }
 
+  // Filter trades by selected market
+  const marketTrades = getTradesByMarket(selectedMarket as `0x${string}`);
+
   return (
     <div className="trade-feed">
       <h3>Live Trade Feed</h3>
 
-      {trades.length === 0 ? (
+      {marketTrades.length === 0 ? (
         <p className="no-trades">No trades yet. Start simulation to see activity.</p>
       ) : (
         <div className="trade-list">
-          {trades.map((trade) => (
+          {marketTrades.map((trade) => (
             <div
               key={trade.id}
               className={`trade-item ${trade.type} ${isBotAddress(trade.user) ? 'bot-trade' : ''}`}

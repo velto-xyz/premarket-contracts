@@ -1,19 +1,22 @@
-import { useEffect } from 'react';
-import { useReadContract, useChainId } from 'wagmi';
+import { useEffect, useState } from 'react';
+import { useReadContract, useChainId, usePublicClient } from 'wagmi';
 import { useMarketStore } from '../store/marketStore';
-import { ABIS, getContractAddresses } from '../contract-api';
+import { ABIS, getContractAddresses, ContractService } from '../contract-api';
+import { formatCompact } from '../utils/format';
 
 // Market display names mapped by index
 const MARKET_NAMES: Record<number, string> = {
-  0: 'SpaceX Perpetual',
-  1: 'OpenAI Perpetual',
-  2: 'Vento Perpetual',
+  0: 'SpaceX',
+  1: 'Stripe',
+  2: 'Velto',
 };
 
 export function MarketSelector() {
   const { selectedMarket, setSelectedMarket } = useMarketStore();
   const chainId = useChainId();
   const addresses = getContractAddresses(chainId);
+  const publicClient = usePublicClient();
+  const [poolSizes, setPoolSizes] = useState<Record<string, number>>({});
 
   const { data: markets, isError, isLoading, error } = useReadContract({
     address: addresses.factory,
@@ -28,6 +31,29 @@ export function MarketSelector() {
       setSelectedMarket(markets[0]);
     }
   }, [selectedMarket, markets, setSelectedMarket]);
+
+  // Fetch pool sizes for all markets
+  useEffect(() => {
+    if (!markets || !publicClient) return;
+
+    const fetchPoolSizes = async () => {
+      const service = new ContractService(chainId, publicClient);
+      const sizes: Record<string, number> = {};
+
+      for (const marketAddress of markets as string[]) {
+        try {
+          const marketData = await service.engine.getFullMarketData(marketAddress as `0x${string}`);
+          sizes[marketAddress] = Number(marketData.quoteReserve) / 1e18;
+        } catch (err) {
+          console.error(`Failed to fetch pool size for ${marketAddress}:`, err);
+        }
+      }
+
+      setPoolSizes(sizes);
+    };
+
+    fetchPoolSizes();
+  }, [markets, chainId, publicClient]);
 
   const getErrorMessage = () => {
     if (!error) return '⚠️ Contract call failed';
@@ -56,11 +82,15 @@ export function MarketSelector() {
         <option value="">
           {isLoading ? 'Loading markets...' : 'Select Market...'}
         </option>
-        {markets?.map((marketAddress: string, index: number) => (
-          <option key={marketAddress} value={marketAddress}>
-            {MARKET_NAMES[index] || `Market ${index + 1}`}
-          </option>
-        ))}
+        {markets?.map((marketAddress: string, index: number) => {
+          const poolSize = poolSizes[marketAddress];
+          const sizeDisplay = poolSize ? ` ($${formatCompact(poolSize)})` : '';
+          return (
+            <option key={marketAddress} value={marketAddress}>
+              {MARKET_NAMES[index] || `Market ${index + 1}`}{sizeDisplay}
+            </option>
+          );
+        })}
       </select>
       {isError && <p className="market-info error">{getErrorMessage()}</p>}
       {markets && markets.length > 0 && (

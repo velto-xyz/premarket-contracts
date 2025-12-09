@@ -381,4 +381,95 @@ contract PerpMarketTest is Test {
         // But increase should be minimal (less than 0.0001%)
         assertLe(newK, market.k() * 1000001 / 1000000, "k increased too much");
     }
+
+    // ============ Production Reserve Tests ============
+
+    /**
+     * @notice Test price impact with production-sized reserves (matches 02_SetupLocal.s.sol)
+     * Initial: 1M base, 2B quote → price = $2000
+     * Trade: 100k USDC (6 decimals) → ~5% of quote reserve
+     * Expected: Significant price impact due to vAMM slippage
+     */
+    function test_ProductionReserves_PriceImpact() public {
+        // Deploy market with production reserves (matching deployment script)
+        PerpMarket prodMarket = new PerpMarket(
+            1_000_000 * PRECISION,  // 1M base
+            2_000_000_000 * PRECISION  // 2B quote
+        );
+        prodMarket.setEngine(address(this));
+
+        // Initial price: 2B / 1M = 2000
+        uint256 initialPrice = prodMarket.getMarkPrice();
+        assertEq(initialPrice, 2000 * PRECISION, "Initial price should be $2000");
+
+        // Trade 100k USDC (converted to 18 decimals for internal math)
+        uint256 tradeAmount = 100_000 * PRECISION;
+
+        // Simulate long position
+        (uint256 baseOut, uint256 avgPrice) = prodMarket.simulateOpenLong(tradeAmount);
+
+        // Calculate expected price impact using constant product formula
+        // newQuote = 2B + 100k = 2,000,100,000
+        // newBase = k / newQuote = (1M * 2B) / 2,000,100,000
+        // baseOut = 1M - newBase
+        uint256 expectedNewQuote = 2_000_000_000 * PRECISION + tradeAmount;
+        uint256 k = prodMarket.k();
+        uint256 expectedNewBase = k / expectedNewQuote;
+        uint256 expectedBaseOut = 1_000_000 * PRECISION - expectedNewBase;
+
+        // Verify baseOut matches formula (within rounding)
+        assertApproxEqAbs(baseOut, expectedBaseOut, 1000, "baseOut should match constant product");
+
+        // Verify average execution price
+        uint256 calculatedAvgPrice = (tradeAmount * PRECISION) / baseOut;
+        assertEq(avgPrice, calculatedAvgPrice, "avgPrice should be quoteIn / baseOut");
+
+        // Price impact check: avgPrice should be higher than mark (slippage)
+        assertGt(avgPrice, initialPrice, "Execution price should be higher than mark due to slippage");
+
+        // Calculate new mark price after trade
+        uint256 newMarkPrice = expectedNewQuote * PRECISION / expectedNewBase;
+
+        // For a 100k trade on 2B quote reserves (0.005% of reserves):
+        // Expected price movement: ~0.005% increase
+        // $2000 → $2000.10 (approximately)
+        uint256 expectedPriceIncrease = (initialPrice * 5) / 100000; // 0.005%
+
+        assertApproxEqAbs(
+            newMarkPrice,
+            initialPrice + expectedPriceIncrease,
+            initialPrice / 1000, // 0.1% tolerance
+            "New mark price should reflect ~0.005% increase"
+        );
+
+        console.log("Initial Price:", initialPrice / PRECISION);
+        console.log("Avg Execution Price:", avgPrice / PRECISION);
+        console.log("New Mark Price:", newMarkPrice / PRECISION);
+        console.log("Base Out:", baseOut / PRECISION);
+        console.log("Price Impact:", ((avgPrice - initialPrice) * 10000) / initialPrice, "bps");
+    }
+
+    /**
+     * @notice Test that large trade (10M) has substantial price impact on production reserves
+     */
+    function test_ProductionReserves_LargeTrade() public {
+        PerpMarket prodMarket = new PerpMarket(
+            1_000_000 * PRECISION,
+            2_000_000_000 * PRECISION
+        );
+        prodMarket.setEngine(address(this));
+
+        uint256 initialPrice = prodMarket.getMarkPrice();
+
+        // Trade 10M USDC (0.5% of quote reserves)
+        uint256 largeTradeAmount = 10_000_000 * PRECISION;
+
+        (uint256 baseOut, uint256 avgPrice) = prodMarket.simulateOpenLong(largeTradeAmount);
+
+        // Should have significant slippage (>0.5%)
+        uint256 priceImpactBps = ((avgPrice - initialPrice) * 10000) / initialPrice;
+        assertGt(priceImpactBps, 50, "Large trade should have >50bps (0.5%) slippage");
+
+        console.log("Large Trade Price Impact:", priceImpactBps, "bps");
+    }
 }

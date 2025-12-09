@@ -12,6 +12,7 @@ export interface Trade {
   transactionHash: string;
   positionId: bigint;
   user: Address;
+  engine: Address; // Market/engine address
 
   // Open position fields
   isLong?: boolean;
@@ -38,6 +39,7 @@ interface TradeStore {
   addTrades: (trades: Trade[]) => void;
   getTradesByUser: (userAddress: Address) => Trade[];
   getTradesByPosition: (positionId: bigint) => Trade[];
+  getTradesByMarket: (engineAddress: Address) => Trade[];
   clear: () => void;
 }
 
@@ -78,6 +80,14 @@ export const useTradeStore = create<TradeStore>()(
       getTradesByPosition: (positionId) => {
         const state = get();
         return state.trades.filter((trade) => trade.positionId === positionId);
+      },
+
+      getTradesByMarket: (engineAddress) => {
+        const state = get();
+        const engineKey = engineAddress.toLowerCase();
+        return state.trades.filter(
+          (trade) => trade.engine.toLowerCase() === engineKey
+        );
       },
 
       clear: () => set({ trades: [] }),

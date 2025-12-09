@@ -5,6 +5,7 @@ import type { Address } from 'viem';
 export interface Position {
   id: bigint;
   user: Address;
+  engine: Address; // Market/engine address
   isLong: boolean;
   baseSize: bigint;
   entryPrice: bigint;
@@ -27,6 +28,7 @@ interface PositionStore {
   updatePosition: (positionId: bigint, updates: Partial<Position>) => void;
   setPositions: (positions: Position[]) => void;
   getUserPositions: (userAddress: Address) => Position[];
+  getPositionsByMarket: (engineAddress: Address) => Position[];
   clear: () => void;
 }
 
@@ -127,6 +129,14 @@ export const usePositionStore = create<PositionStore>()(
         return positionIds
           .map((id) => state.positions[id.toString()])
           .filter(Boolean);
+      },
+
+      getPositionsByMarket: (engineAddress) => {
+        const state = get();
+        const engineKey = engineAddress.toLowerCase();
+        return Object.values(state.positions).filter(
+          (pos) => pos.engine.toLowerCase() === engineKey
+        );
       },
 
       clear: () => set({ positions: {}, userPositions: {} }),

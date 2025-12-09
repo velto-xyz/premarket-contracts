@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { type LineData, type UTCTimestamp } from 'lightweight-charts';
 import { useMarketData } from '../hooks/useMarketData';
+import { useMarketStore } from '../store/marketStore';
 import { LineChart } from './charts/LineChart';
 import { formatBigInt, formatCompact } from '../utils/format';
 
 const MAX_DATA_POINTS = 100; // Keep last 100 data points
 
 export function MarketCharts() {
+  const { selectedMarket } = useMarketStore();
   const marketData = useMarketData(2000); // Refresh every 2 seconds
 
   // Store historical data
@@ -16,6 +18,16 @@ export function MarketCharts() {
   const [longOIHistory, setLongOIHistory] = useState<LineData[]>([]);
   const [shortOIHistory, setShortOIHistory] = useState<LineData[]>([]);
   const [carryHistory, setCarryHistory] = useState<LineData[]>([]);
+
+  // Reset charts when market changes
+  useEffect(() => {
+    setPriceHistory([]);
+    setBaseReserveHistory([]);
+    setQuoteReserveHistory([]);
+    setLongOIHistory([]);
+    setShortOIHistory([]);
+    setCarryHistory([]);
+  }, [selectedMarket]);
 
   // Update historical data when new market data arrives
   useEffect(() => {

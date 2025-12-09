@@ -43,24 +43,35 @@ contract SetupLocal is Script {
         MockUSDC usdc = new MockUSDC();
         console.log("   Address:", address(usdc));
 
-        // 2. Create test markets
+        // 2. Create test markets with realistic valuations
         console.log("\n2. Creating test markets...");
 
-        // Default config: 1M base, 2B quote (price = 2000), 30x leverage
-        PerpFactory.MarketConfig memory defaultConfig = PerpFactory.MarketConfig({
-            baseReserve: 1_000_000 * 1e18,
-            quoteReserve: 2_000_000_000 * 1e18,
+        // SPACEX: Tier 1 - $2000 price, $50M liquidity (established unicorn)
+        PerpFactory.MarketConfig memory spacexConfig = PerpFactory.MarketConfig({
+            baseReserve: 25_000 * 1e18,
+            quoteReserve: 50_000_000 * 1e18,
             maxLeverage: 30 * 1e18
         });
+        address spacexEngine = factory.createMarket(address(usdc), spacexConfig);
+        console.log("   SPACEX-PERP: ", spacexEngine, "(Price: $2000, Pool: $50M)");
 
-        address spacexEngine = factory.createMarket(address(usdc), defaultConfig);
-        console.log("   SPACEX-PERP:", spacexEngine);
+        // STRIPE: Tier 2 - $500 price, $10M liquidity (mid-stage growth)
+        PerpFactory.MarketConfig memory stripeConfig = PerpFactory.MarketConfig({
+            baseReserve: 20_000 * 1e18,
+            quoteReserve: 10_000_000 * 1e18,
+            maxLeverage: 25 * 1e18
+        });
+        address stripeEngine = factory.createMarket(address(usdc), stripeConfig);
+        console.log("   STRIPE-PERP: ", stripeEngine, "(Price: $500, Pool: $10M)");
 
-        address openaiEngine = factory.createMarket(address(usdc), defaultConfig);
-        console.log("   OPENAI-PERP:", openaiEngine);
-
-        address ventoEngine = factory.createMarket(address(usdc), defaultConfig);
-        console.log("   VENTO-PERP:", ventoEngine);
+        // VELTO: Tier 3 - $100 price, $1M liquidity (early stage)
+        PerpFactory.MarketConfig memory veltoConfig = PerpFactory.MarketConfig({
+            baseReserve: 10_000 * 1e18,
+            quoteReserve: 1_000_000 * 1e18,
+            maxLeverage: 20 * 1e18
+        });
+        address veltoEngine = factory.createMarket(address(usdc), veltoConfig);
+        console.log("   VELTO-PERP:  ", veltoEngine, "(Price: $100, Pool: $1M)");
 
         // 3. Setup test accounts (Anvil accounts)
         console.log("\n3. Setting up test accounts...");
@@ -103,9 +114,9 @@ contract SetupLocal is Script {
         console.log("");
         console.log("Markets:");
         console.log("--------");
-        console.log("SPACEX-PERP:   ", spacexEngine);
-        console.log("OPENAI-PERP:   ", openaiEngine);
-        console.log("VENTO-PERP:    ", ventoEngine);
+        console.log("SPACEX-PERP:   ", spacexEngine, " ($2000, $50M pool)");
+        console.log("STRIPE-PERP:   ", stripeEngine, " ($500, $10M pool)");
+        console.log("VELTO-PERP:    ", veltoEngine, "  ($100, $1M pool)");
         console.log("");
         console.log("Test Accounts:");
         console.log("--------------");

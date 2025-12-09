@@ -11,7 +11,7 @@ export function PositionList() {
   const { address, isConnected } = useAccount();
   const { selectedMarket } = useMarketStore();
   const { botWallets } = useSimulationStore();
-  const { getUserPositions, positions: allPositions } = usePositionStore();
+  const { getUserPositions, getPositionsByMarket } = usePositionStore();
   const [closingPositionId, setClosingPositionId] = useState<bigint | null>(null);
 
   // Helper to check if an address belongs to a bot
@@ -22,13 +22,17 @@ export function PositionList() {
   const { writeContract, data: closeHash } = useWriteContract();
   const { isLoading: isClosing } = useWaitForTransactionReceipt({ hash: closeHash });
 
-  // Get user positions from store
-  const userPositions = address ? getUserPositions(address) : [];
+  // Get positions for selected market only
+  const marketPositions = selectedMarket
+    ? getPositionsByMarket(selectedMarket as `0x${string}`)
+    : [];
 
-  // Get bot positions from store
-  const botPositions = Object.values(allPositions).filter(pos =>
-    isBotAddress(pos.user)
-  );
+  // Filter by user and bot
+  const userPositions = address
+    ? marketPositions.filter(pos => pos.user.toLowerCase() === address.toLowerCase())
+    : [];
+
+  const botPositions = marketPositions.filter(pos => isBotAddress(pos.user));
 
   const handleClosePosition = (positionId: bigint) => {
     if (!selectedMarket) return;

@@ -102,6 +102,7 @@ export function usePositionSync() {
           addPositionRef.current({
             id: args.positionId,
             user: args.user,
+            engine: selectedMarket as Address,
             isLong: args.isLong,
             baseSize: args.baseSize,
             entryPrice: args.entryPrice,
@@ -123,6 +124,7 @@ export function usePositionSync() {
             transactionHash: log.transactionHash as string,
             positionId: args.positionId,
             user: args.user,
+            engine: selectedMarket as Address,
             isLong: args.isLong,
             margin: args.margin,
             leverage: args.leverage,
@@ -144,6 +146,7 @@ export function usePositionSync() {
             transactionHash: log.transactionHash as string,
             positionId: args.positionId,
             user: args.user,
+            engine: selectedMarket as Address,
             totalPnl: args.totalPnl,
             avgClosePrice: args.avgClosePrice,
           });
@@ -175,6 +178,7 @@ export function usePositionSync() {
         addPositionRef.current({
           id: args.positionId,
           user: args.user,
+          engine: selectedMarket as Address,
           isLong: args.isLong,
           baseSize: args.baseSize,
           entryPrice: args.entryPrice,
@@ -196,6 +200,7 @@ export function usePositionSync() {
           transactionHash: log.transactionHash,
           positionId: args.positionId,
           user: args.user,
+          engine: selectedMarket as Address,
           isLong: args.isLong,
           margin: args.margin,
           leverage: args.leverage,
@@ -232,6 +237,7 @@ export function usePositionSync() {
           transactionHash: log.transactionHash,
           positionId: args.positionId,
           user: args.user,
+          engine: selectedMarket as Address,
           totalPnl: args.totalPnl,
           avgClosePrice: args.avgClosePrice,
         });
