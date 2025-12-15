@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
 
 import "forge-std/Script.sol";
 import "../src/PerpFactory.sol";
@@ -46,33 +46,6 @@ contract SetupLocal is Script {
         // 2. Create test markets with realistic valuations
         console.log("\n2. Creating test markets...");
 
-        // SPACEX: Tier 1 - $2000 price, $50M liquidity (established unicorn)
-        PerpFactory.MarketConfig memory spacexConfig = PerpFactory.MarketConfig({
-            baseReserve: 25_000 * 1e18,
-            quoteReserve: 50_000_000 * 1e18,
-            maxLeverage: 30 * 1e18
-        });
-        address spacexEngine = factory.createMarket(address(usdc), spacexConfig);
-        console.log("   SPACEX-PERP: ", spacexEngine, "(Price: $2000, Pool: $50M)");
-
-        // STRIPE: Tier 2 - $500 price, $10M liquidity (mid-stage growth)
-        PerpFactory.MarketConfig memory stripeConfig = PerpFactory.MarketConfig({
-            baseReserve: 20_000 * 1e18,
-            quoteReserve: 10_000_000 * 1e18,
-            maxLeverage: 25 * 1e18
-        });
-        address stripeEngine = factory.createMarket(address(usdc), stripeConfig);
-        console.log("   STRIPE-PERP: ", stripeEngine, "(Price: $500, Pool: $10M)");
-
-        // VELTO: Tier 3 - $100 price, $1M liquidity (early stage)
-        PerpFactory.MarketConfig memory veltoConfig = PerpFactory.MarketConfig({
-            baseReserve: 10_000 * 1e18,
-            quoteReserve: 1_000_000 * 1e18,
-            maxLeverage: 20 * 1e18
-        });
-        address veltoEngine = factory.createMarket(address(usdc), veltoConfig);
-        console.log("   VELTO-PERP:  ", veltoEngine, "(Price: $100, Pool: $1M)");
-
         // 3. Setup test accounts (Anvil accounts)
         console.log("\n3. Setting up test accounts...");
 
@@ -111,12 +84,6 @@ contract SetupLocal is Script {
         // 6. Summary
         console.log("\n=== Setup Complete ===\n");
         console.log("MockUSDC:      ", address(usdc));
-        console.log("");
-        console.log("Markets:");
-        console.log("--------");
-        console.log("SPACEX-PERP:   ", spacexEngine, " ($2000, $50M pool)");
-        console.log("STRIPE-PERP:   ", stripeEngine, " ($500, $10M pool)");
-        console.log("VELTO-PERP:    ", veltoEngine, "  ($100, $1M pool)");
         console.log("");
         console.log("Test Accounts:");
         console.log("--------------");

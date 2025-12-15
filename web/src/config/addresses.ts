@@ -1,11 +1,11 @@
 /**
  * Contract addresses configuration
- * Known USDC addresses are hardcoded, deployed addresses come from deployments.json
+ * Known USDC addresses are hardcoded, deployed addresses come from SDK
  */
 
-import deployments from '../../../deployments.json';
+import { getDeployment, isChainSupported as sdkIsChainSupported } from '@velto/contracts';
 
-// Known USDC addresses on public networks
+// Known USDC addresses on public networks (fallback for chains without deployment)
 const KNOWN_USDC: Record<number, string> = {
   // Mainnets
   1: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',        // Ethereum
@@ -21,37 +21,16 @@ const KNOWN_USDC: Record<number, string> = {
   421614: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',   // Arbitrum Sepolia
 };
 
-// Build address maps from deployments.json
-export const USDC_ADDRESSES: Record<number, string> = Object.entries(deployments as Record<string, any>).reduce((acc, [chainId, deployment]) => {
-  const id = parseInt(chainId);
-  acc[id] = deployment.usdc || KNOWN_USDC[id] || '';
-  return acc;
-}, { ...KNOWN_USDC });
-
-export const FACTORY_ADDRESSES: Record<number, string> = Object.entries(deployments as Record<string, any>).reduce((acc, [chainId, deployment]) => {
-  acc[parseInt(chainId)] = deployment.factory || '';
-  return acc;
-}, {} as Record<number, string>);
-
-export const LIQUIDATION_ENGINE_ADDRESSES: Record<number, string> = Object.entries(deployments as Record<string, any>).reduce((acc, [chainId, deployment]) => {
-  acc[parseInt(chainId)] = deployment.liquidationEngine || '';
-  return acc;
-}, {} as Record<number, string>);
-
-export const FUNDING_MANAGER_ADDRESSES: Record<number, string> = Object.entries(deployments as Record<string, any>).reduce((acc, [chainId, deployment]) => {
-  acc[parseInt(chainId)] = deployment.fundingManager || '';
-  return acc;
-}, {} as Record<number, string>);
-
 /**
  * Get contract addresses for a given chain
  */
 export function getAddresses(chainId: number) {
+  const deployment = getDeployment(chainId);
   return {
-    usdc: USDC_ADDRESSES[chainId],
-    factory: FACTORY_ADDRESSES[chainId],
-    liquidationEngine: LIQUIDATION_ENGINE_ADDRESSES[chainId],
-    fundingManager: FUNDING_MANAGER_ADDRESSES[chainId],
+    usdc: deployment?.usdc || KNOWN_USDC[chainId] || '',
+    factory: deployment?.factory || '',
+    liquidationEngine: deployment?.liquidationEngine || '',
+    fundingManager: deployment?.fundingManager || '',
   };
 }
 
@@ -59,7 +38,7 @@ export function getAddresses(chainId: number) {
  * Check if a chain is supported
  */
 export function isChainSupported(chainId: number): boolean {
-  return !!USDC_ADDRESSES[chainId] && !!FACTORY_ADDRESSES[chainId];
+  return sdkIsChainSupported(chainId);
 }
 
 /**

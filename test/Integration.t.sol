@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PerpFactory.sol";
 import "../src/PerpEngine.sol";
+import "../src/PerpMarket.sol";
+import "../src/PositionManager.sol";
 import "../src/LiquidationEngine.sol";
 import "../src/FundingManager.sol";
 import "../src/MockUSDC.sol";
@@ -25,14 +27,25 @@ contract IntegrationTest is Test {
     uint256 constant PRECISION = 1e18;
 
     function setUp() public {
+        // Deploy implementation contracts
+        PerpMarket perpMarketImpl = new PerpMarket();
+        PositionManager positionManagerImpl = new PositionManager();
+        PerpEngine perpEngineImpl = new PerpEngine();
+
         // Deploy shared LiquidationEngine
         LiquidationEngine liquidationEngine = new LiquidationEngine();
 
         // Deploy shared FundingManager
         FundingManager fundingManager = new FundingManager();
 
-        // Deploy factory with shared instances
-        factory = new PerpFactory(liquidationEngine, fundingManager);
+        // Deploy factory with implementations and shared instances
+        factory = new PerpFactory(
+            address(perpMarketImpl),
+            address(positionManagerImpl),
+            address(perpEngineImpl),
+            liquidationEngine,
+            fundingManager
+        );
 
         // Deploy MockUSDC
         usdc = new MockUSDC();

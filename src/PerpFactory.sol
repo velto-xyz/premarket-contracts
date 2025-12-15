@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {PerpEngine} from "./PerpEngine.sol";
 import {PerpMarket} from "./PerpMarket.sol";
 import {PositionManager} from "./PositionManager.sol";
@@ -10,14 +11,17 @@ import {LiquidationEngine} from "./LiquidationEngine.sol";
 
 /**
  * @title PerpFactory
- * @notice Factory for deploying independent perpetual futures markets
+ * @notice Factory for deploying independent perpetual futures markets using EIP-1167 clones
  * @dev Each market is isolated with its own:
  *      - vAMM reserves and parameters
  *      - Position manager
  *      - Funding manager
  *      - Insurance fund
  *
- * LiquidationEngine is shared across all markets for gas efficiency.
+ * Uses minimal proxy clones (EIP-1167) for gas-efficient market creation.
+ * Implementation contracts are deployed once, then cloned for each market.
+ *
+ * LiquidationEngine and FundingManager are shared across all markets for gas efficiency.
  *
  * This enables multiple markets (ETH-PERP, BTC-PERP, etc.) with different configurations
  *
@@ -36,6 +40,11 @@ contract PerpFactory is Ownable {
     }
 
     // ============ State Variables ============
+
+    /// @notice Implementation contracts (deployed once, cloned for each market)
+    address public immutable perpMarketImplementation;
+    address public immutable positionManagerImplementation;
+    address public immutable perpEngineImplementation;
 
     /// @notice Shared liquidation engine for all markets
     LiquidationEngine public immutable liquidationEngine;
@@ -71,9 +80,24 @@ contract PerpFactory is Ownable {
 
     // ============ Constructor ============
 
-    constructor(LiquidationEngine _liquidationEngine, FundingManager _fundingManager)
-        Ownable(msg.sender)
-    {
+    /**
+     * @notice Deploy factory with implementation addresses
+     * @param _perpMarketImpl PerpMarket implementation address
+     * @param _positionManagerImpl PositionManager implementation address
+     * @param _perpEngineImpl PerpEngine implementation address
+     * @param _liquidationEngine Shared LiquidationEngine address
+     * @param _fundingManager Shared FundingManager address
+     */
+    constructor(
+        address _perpMarketImpl,
+        address _positionManagerImpl,
+        address _perpEngineImpl,
+        LiquidationEngine _liquidationEngine,
+        FundingManager _fundingManager
+    ) Ownable(msg.sender) {
+        perpMarketImplementation = _perpMarketImpl;
+        positionManagerImplementation = _positionManagerImpl;
+        perpEngineImplementation = _perpEngineImpl;
         liquidationEngine = _liquidationEngine;
         fundingManager = _fundingManager;
         // Owner is automatically authorized to create markets
@@ -103,13 +127,13 @@ contract PerpFactory is Ownable {
     }
 
     /**
-     * @notice Create a new perpetual futures market
-     * @dev Deploys all necessary contracts for an isolated market
+     * @notice Create a new perpetual futures market using minimal proxy clones
+     * @dev Creates clones of implementation contracts for gas efficiency
      *      Only owner or authorized market creators can call this
      *
      * @param collateralToken Address of collateral token (e.g., USDC)
      * @param config Market configuration parameters
-     * @return engineAddress Address of the deployed PerpEngine
+     * @return engineAddress Address of the deployed PerpEngine clone
      */
     function createMarket(address collateralToken, MarketConfig memory config)
         public
@@ -120,19 +144,22 @@ contract PerpFactory is Ownable {
         if (config.baseReserve == 0 || config.quoteReserve == 0) revert InvalidReserves();
         if (config.maxLeverage == 0 || config.maxLeverage > 30e18) revert InvalidLeverage();
 
-        // Deploy contracts in order (dependencies matter)
+        // Clone contracts in order (dependencies matter)
 
-        // 1. Deploy PerpMarket (vAMM)
-        PerpMarket market = new PerpMarket(config.baseReserve, config.quoteReserve);
+        // 1. Clone PerpMarket (vAMM)
+        address marketClone = Clones.clone(perpMarketImplementation);
+        PerpMarket market = PerpMarket(marketClone);
+        market.initialize(config.baseReserve, config.quoteReserve, address(this));
 
-        // 2. Deploy PositionManager
-        PositionManager positionManager = new PositionManager(
-            address(this),
-            market
-        );
+        // 2. Clone PositionManager
+        address positionManagerClone = Clones.clone(positionManagerImplementation);
+        PositionManager positionManager = PositionManager(positionManagerClone);
+        positionManager.initialize(market, address(this));
 
-        // 3. Deploy PerpEngine (main orchestrator) with shared instances
-        PerpEngine engine = new PerpEngine(
+        // 3. Clone PerpEngine (main orchestrator)
+        address engineClone = Clones.clone(perpEngineImplementation);
+        PerpEngine engine = PerpEngine(engineClone);
+        engine.initialize(
             collateralToken,
             market,
             positionManager,

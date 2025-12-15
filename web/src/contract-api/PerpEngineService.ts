@@ -1,8 +1,7 @@
 import type { PublicClient, WalletClient, Address } from 'viem';
 import { parseEventLogs } from 'viem';
 import { ABIS } from './abis';
-import { decodeContractError } from './errors';
-import type { MarketData } from './types';
+import { executeTransaction, decodeContractError, type MarketData } from '@velto/contracts';
 
 /**
  * PerpEngine Service
@@ -18,19 +17,14 @@ export class PerpEngineService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: engineAddress,
         abi: ABIS.PerpEngine,
         functionName: 'deposit',
         args: [amount],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {
@@ -43,19 +37,14 @@ export class PerpEngineService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: engineAddress,
         abi: ABIS.PerpEngine,
         functionName: 'withdraw',
         args: [amount],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {
@@ -73,19 +62,14 @@ export class PerpEngineService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash, receipt } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: engineAddress,
         abi: ABIS.PerpEngine,
         functionName: 'openPosition',
         args: [isLong, totalToUse, leverage],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
 
       // Parse PositionOpened event to get position ID
       const logs = parseEventLogs({
@@ -107,19 +91,14 @@ export class PerpEngineService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash, receipt } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: engineAddress,
         abi: ABIS.PerpEngine,
         functionName: 'closePosition',
         args: [positionId],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
 
       // Parse PositionClosed event
       const logs = parseEventLogs({
@@ -141,19 +120,14 @@ export class PerpEngineService {
     if (!this.walletClient) throw new Error('Wallet client required');
 
     try {
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: engineAddress,
         abi: ABIS.PerpEngine,
         functionName: 'liquidate',
         args: [positionId],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {

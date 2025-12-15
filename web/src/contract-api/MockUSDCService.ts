@@ -1,6 +1,6 @@
 import type { PublicClient, WalletClient, Address } from 'viem';
 import { ABIS, getContractAddresses } from './abis';
-import { decodeContractError } from './errors';
+import { executeTransaction, decodeContractError } from '@velto/contracts';
 
 /**
  * MockUSDC Service
@@ -39,19 +39,14 @@ export class MockUSDCService {
 
     try {
       const addresses = getContractAddresses(this.chainId);
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: addresses.usdc,
         abi: ABIS.MockUSDC,
         functionName: 'mint',
         args: [to, amount],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {
@@ -65,18 +60,13 @@ export class MockUSDCService {
 
     try {
       const addresses = getContractAddresses(this.chainId);
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: addresses.usdc,
         abi: ABIS.MockUSDC,
         functionName: 'faucet',
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {
@@ -90,19 +80,14 @@ export class MockUSDCService {
 
     try {
       const addresses = getContractAddresses(this.chainId);
-      const account = this.walletClient.account;
-      if (!account) throw new Error('No account connected');
-
-      const { request } = await this.publicClient.simulateContract({
+      const { hash } = await executeTransaction({
+        publicClient: this.publicClient,
+        walletClient: this.walletClient,
         address: addresses.usdc,
         abi: ABIS.MockUSDC,
         functionName: 'approve',
         args: [spender, amount],
-        account: account.address,
       });
-
-      const hash = await this.walletClient.writeContract(request);
-      await this.publicClient.waitForTransactionReceipt({ hash });
 
       return { txHash: hash };
     } catch (error: any) {

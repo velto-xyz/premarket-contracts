@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {PerpMarket} from "./PerpMarket.sol";
 import {PositionManager} from "./PositionManager.sol";
 import {FundingManager} from "./FundingManager.sol";
@@ -12,17 +14,17 @@ import {LiquidationEngine} from "./LiquidationEngine.sol";
 /**
  * @title PerpEngine
  * @notice Main orchestrator for perpetual futures trading
- * @dev Maps to perp.js top-level functions (deposit, withdraw, openPosition, closePosition, liquidate)
+ * @dev Supports both standalone and permit-based workflows
  *
  * This is the main user-facing contract. It:
  * - Manages user wallets and protocol funds
  * - Coordinates with all other contracts
- * - Implements deposit/withdraw (USDC ↔ internal balance)
- * - Implements openPosition (Mode 3: specify total amount and leverage)
- * - Implements closePosition
+ * - Implements depositWithPermit (EIP-2612 gasless approval)
+ * - Implements depositAndOpenPosition (gasless one-transaction open)
+ * - Implements standalone withdraw() and closePosition()
  * - Implements liquidation
  */
-contract PerpEngine is ReentrancyGuard {
+contract PerpEngine is ReentrancyGuard, Initializable {
     using SafeERC20 for IERC20;
 
     // ============ Constants ============
@@ -36,13 +38,16 @@ contract PerpEngine is ReentrancyGuard {
     // ============ State Variables ============
 
     /// @notice Collateral token (USDC)
-    IERC20 public immutable collateralToken;
+    IERC20 public collateralToken;
 
     /// @notice Reference contracts
-    PerpMarket public immutable market;
-    PositionManager public immutable positionManager;
-    FundingManager public immutable fundingManager;
-    LiquidationEngine public immutable liquidationEngine;
+    PerpMarket public market;
+    PositionManager public positionManager;
+    FundingManager public fundingManager;
+    LiquidationEngine public liquidationEngine;
+
+    /// @notice Block number when this market was deployed
+    uint256 public deploymentBlock;
 
     /// @notice User wallet balances (18 decimals)
     mapping(address => uint256) public userWallets;
@@ -96,26 +101,35 @@ contract PerpEngine is ReentrancyGuard {
     error NotPositionOwner();
     error NotLiquidatable();
 
-    // ============ Constructor ============
+    // ============ Initialization ============
 
-    constructor(
+    /**
+     * @notice Initialize the engine (replaces constructor for clone pattern)
+     * @param _collateralToken Address of collateral token (USDC)
+     * @param _market PerpMarket address
+     * @param _positionManager PositionManager address
+     * @param _fundingManager FundingManager address
+     * @param _liquidationEngine LiquidationEngine address
+     */
+    function initialize(
         address _collateralToken,
         PerpMarket _market,
         PositionManager _positionManager,
         FundingManager _fundingManager,
         LiquidationEngine _liquidationEngine
-    ) {
+    ) external initializer {
         collateralToken = IERC20(_collateralToken);
         market = _market;
         positionManager = _positionManager;
         fundingManager = _fundingManager;
         liquidationEngine = _liquidationEngine;
+        deploymentBlock = block.number;
     }
 
     // ============ Deposit / Withdraw ============
 
     /**
-     * @notice Deposit USDC into user wallet
+     * @notice Deposit USDC into user wallet (requires prior approval)
      * @param amount Amount of USDC to deposit (6 decimals)
      */
     function deposit(uint256 amount) external nonReentrant {
@@ -126,6 +140,47 @@ contract PerpEngine is ReentrancyGuard {
 
         // Convert to internal 18 decimals
         uint256 internalAmount = amount * USDC_TO_INTERNAL;
+        userWallets[msg.sender] += internalAmount;
+
+        emit Deposit(msg.sender, internalAmount);
+    }
+
+    /**
+     * @notice Deposit USDC into user wallet using EIP-2612 permit (gasless approval)
+     * @param depositAmount Amount of USDC to deposit (6 decimals)
+     * @param permitAmount Amount approved in permit signature (6 decimals, can be larger/unlimited)
+     * @param deadline Permit deadline timestamp
+     * @param v Permit signature v
+     * @param r Permit signature r
+     * @param s Permit signature s
+     */
+    function depositWithPermit(
+        uint256 depositAmount,
+        uint256 permitAmount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        if (depositAmount == 0) revert InvalidAmount();
+
+        // Execute permit (gasless approval) for permitAmount
+        // permitAmount can be larger (e.g., type(uint256).max for unlimited) to reuse signature
+        IERC20Permit(address(collateralToken)).permit(
+            msg.sender,
+            address(this),
+            permitAmount,
+            deadline,
+            v,
+            r,
+            s
+        );
+
+        // Transfer actual deposit amount from user
+        collateralToken.safeTransferFrom(msg.sender, address(this), depositAmount);
+
+        // Convert to internal 18 decimals
+        uint256 internalAmount = depositAmount * USDC_TO_INTERNAL;
         userWallets[msg.sender] += internalAmount;
 
         emit Deposit(msg.sender, internalAmount);
@@ -180,6 +235,17 @@ contract PerpEngine is ReentrancyGuard {
         uint256 totalToUse,
         uint256 leverage
     ) external nonReentrant returns (uint256 positionId) {
+        return _openPosition(isLong, totalToUse, leverage);
+    }
+
+    /**
+     * @dev Internal function to open position (called by openPosition and depositAndOpenPosition)
+     */
+    function _openPosition(
+        bool isLong,
+        uint256 totalToUse,
+        uint256 leverage
+    ) internal returns (uint256 positionId) {
         // Validations
         if (totalToUse == 0) revert InvalidAmount();
         if (leverage == 0 || leverage > MAX_LEVERAGE) revert InvalidLeverage();
@@ -249,19 +315,6 @@ contract PerpEngine is ReentrancyGuard {
 
     /**
      * @notice Close a position
-     * @dev Maps to perp.js lines 1152-1213
-     *
-     * Algorithm:
-     * 1. Verify position exists and user owns it
-     * 2. Update carry
-     * 3. Execute vAMM close
-     * 4. Calculate trading PnL
-     * 5. Calculate carry PnL
-     * 6. Calculate payout = margin + totalPnL
-     * 7. Update tradeFund and user wallet
-     * 8. Decrease OI
-     * 9. Update position status
-     *
      * @param positionId Position ID to close
      * @return totalPnl Total PnL (trading + carry)
      */
@@ -303,8 +356,6 @@ contract PerpEngine is ReentrancyGuard {
         uint256 notionalNow = (position.baseSize * markPrice) / PRECISION;
         int256 deltaCarry = market.cumulativeCarryIndex() - position.carrySnapshot;
         int256 sideSign = position.isLong ? int256(-1) : int256(1);
-        // Safe carry calculation to prevent overflow
-        // Use unsigned math then apply sign at the end
         uint256 absCarry = deltaCarry >= 0 ? uint256(deltaCarry) : uint256(-deltaCarry);
         uint256 carryMagnitude = (notionalNow * absCarry) / PRECISION;
         int256 carryPnl = int256(carryMagnitude) * sideSign * (deltaCarry >= 0 ? int256(1) : int256(-1));
@@ -315,16 +366,10 @@ contract PerpEngine is ReentrancyGuard {
         int256 payout = int256(position.margin) + totalPnl;
 
         // Update funds
-        // tradeFund only holds margin, not PnL (PnL comes from vAMM reserve changes)
         tradeFund -= position.margin;
 
         if (payout > 0) {
-            // Return margin + PnL to user wallet
             userWallets[msg.sender] += uint256(payout);
-        } else {
-            // Loss exceeds margin - bad debt scenario
-            // In a real system, this would be covered by insurance fund
-            // For now, user gets nothing back
         }
 
         // Decrease OI
@@ -441,6 +486,84 @@ contract PerpEngine is ReentrancyGuard {
         emit PositionLiquidated(positionId, position.user, msg.sender, liqFee);
     }
 
+    // ============ Permit-Based Convenience Functions ============
+
+    /**
+     * @notice Deposit USDC using permit and open position in one transaction
+     * @dev Uses EIP-2612 permit for gasless approval. Perfect for new users.
+     * @param depositAmount Amount of USDC to deposit (6 decimals)
+     * @param permitAmount Amount approved in permit signature (6 decimals, can be larger/unlimited)
+     * @param isLong True for long, false for short
+     * @param totalToUse Total amount to use from wallet (18 decimals)
+     * @param leverage Desired leverage (18 decimals, e.g., 10e18 = 10x)
+     * @param deadline Permit deadline timestamp
+     * @param v Permit signature v
+     * @param r Permit signature r
+     * @param s Permit signature s
+     * @return positionId The created position ID
+     */
+    function depositAndOpenPositionWithPermit(
+        uint256 depositAmount,
+        uint256 permitAmount,
+        bool isLong,
+        uint256 totalToUse,
+        uint256 leverage,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant returns (uint256 positionId) {
+        // 1. Execute permit (gasless approval) for permitAmount
+        // permitAmount can be larger (e.g., type(uint256).max for unlimited) to reuse signature
+        IERC20Permit(address(collateralToken)).permit(
+            msg.sender,
+            address(this),
+            permitAmount,
+            deadline,
+            v,
+            r,
+            s
+        );
+
+        // 2. Deposit actual deposit amount
+        if (depositAmount == 0) revert InvalidAmount();
+        collateralToken.safeTransferFrom(msg.sender, address(this), depositAmount);
+        uint256 internalAmount = depositAmount * USDC_TO_INTERNAL;
+        userWallets[msg.sender] += internalAmount;
+        emit Deposit(msg.sender, internalAmount);
+
+        // 3. Open position (calls internal _openPosition to avoid reentrancy guard collision)
+        return _openPosition(isLong, totalToUse, leverage);
+    }
+
+    // ============ Convenience Functions (Requires Prior Approval) ============
+
+    /**
+     * @notice Deposit USDC and open position in one transaction (assumes approval already set)
+     * @dev Use this when you've already called permit() or approve() separately
+     * @param depositAmount Amount of USDC to deposit (6 decimals)
+     * @param isLong True for long, false for short
+     * @param totalToUse Total amount to use from wallet (18 decimals)
+     * @param leverage Desired leverage (18 decimals, e.g., 10e18 = 10x)
+     * @return positionId The created position ID
+     */
+    function depositAndOpenPosition(
+        uint256 depositAmount,
+        bool isLong,
+        uint256 totalToUse,
+        uint256 leverage
+    ) external nonReentrant returns (uint256 positionId) {
+        // 1. Deposit USDC (requires prior approval)
+        if (depositAmount == 0) revert InvalidAmount();
+        collateralToken.safeTransferFrom(msg.sender, address(this), depositAmount);
+        uint256 internalAmount = depositAmount * USDC_TO_INTERNAL;
+        userWallets[msg.sender] += internalAmount;
+        emit Deposit(msg.sender, internalAmount);
+
+        // 2. Open position (calls internal _openPosition to avoid reentrancy guard collision)
+        return _openPosition(isLong, totalToUse, leverage);
+    }
+
     // ============ View Functions ============
 
     /**
@@ -468,5 +591,33 @@ contract PerpEngine is ReentrancyGuard {
         )
     {
         return (tradeFund, insuranceFund, protocolFees);
+    }
+
+    /**
+     * @notice Get market deployment info for indexing
+     * @return perpEngine Address of this PerpEngine
+     * @return perpMarket Address of PerpMarket
+     * @return positionMgr Address of PositionManager
+     * @return chainId Current chain ID
+     * @return deployBlock Block number when deployed
+     */
+    function getMarketInfo()
+        external
+        view
+        returns (
+            address perpEngine,
+            address perpMarket,
+            address positionMgr,
+            uint256 chainId,
+            uint256 deployBlock
+        )
+    {
+        return (
+            address(this),
+            address(market),
+            address(positionManager),
+            block.chainid,
+            deploymentBlock
+        );
     }
 }

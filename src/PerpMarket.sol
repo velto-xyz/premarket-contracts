@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
+
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /**
  * @title PerpMarket
@@ -9,7 +11,7 @@ pragma solidity 0.8.23;
  * Maps to perp.js lines 460-571 (vAMM simulation functions)
  * Critical: All math must match JavaScript implementation within 1e-15 precision
  */
-contract PerpMarket {
+contract PerpMarket is Initializable {
     // ============ Constants ============
 
     uint256 public constant PRECISION = 1e18;
@@ -46,7 +48,7 @@ contract PerpMarket {
     address public engine;
 
     /// @notice Address of deployer/factory (can set engine once)
-    address public immutable factory;
+    address public factory;
 
     // ============ Events ============
 
@@ -75,13 +77,15 @@ contract PerpMarket {
         _;
     }
 
-    // ============ Constructor ============
+    // ============ Initialization ============
 
     /**
+     * @notice Initialize the market (replaces constructor for clone pattern)
      * @param _baseReserve Initial base reserve (18 decimals)
      * @param _quoteReserve Initial quote reserve (18 decimals)
+     * @param _factory Factory address that can set engine
      */
-    constructor(uint256 _baseReserve, uint256 _quoteReserve) {
+    function initialize(uint256 _baseReserve, uint256 _quoteReserve, address _factory) external initializer {
         if (_baseReserve == 0 || _quoteReserve == 0) revert InvalidReserves();
 
         baseReserve = _baseReserve;
@@ -90,7 +94,7 @@ contract PerpMarket {
         currentBlock = 1; // Start at block 1
         cumulativeCarryIndex = 0; // Start at 0
         lastFundingBlock = 1; // Match currentBlock
-        factory = msg.sender; // Save factory address for setEngine
+        factory = _factory; // Save factory address for setEngine
     }
 
     /**

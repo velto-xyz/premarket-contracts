@@ -41,9 +41,16 @@ export class ContractService {
   }
 }
 
-// Re-export types
-export * from './types';
-export * from './errors';
+// Re-export types from SDK
+export type {
+  ContractError,
+  Position,
+  MarketData,
+  LiquidationInfo,
+  PositionEquity
+} from '@velto/contracts';
+
+// Re-export contract addresses helper
 export * from './abis';
 
 // Re-export individual services for advanced usage

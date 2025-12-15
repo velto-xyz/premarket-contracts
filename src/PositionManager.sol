@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.24;
 
 import {PerpMarket} from "./PerpMarket.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /**
  * @title PositionManager
  * @notice Manages perpetual futures positions and calculates position health
  * @dev Maps to perp.js lines 198-225 (createPosition) and 905-958 (simulateEquityIfClosedNow)
  */
-contract PositionManager {
+contract PositionManager is Initializable {
     // ============ Structs ============
 
     enum PositionStatus {
@@ -51,10 +52,10 @@ contract PositionManager {
     address public engine;
 
     /// @notice Address of deployer/factory (can set engine once)
-    address public immutable factory;
+    address public factory;
 
     /// @notice Reference to PerpMarket for vAMM operations
-    PerpMarket public immutable market;
+    PerpMarket public market;
 
     /// @notice Mapping of position ID to Position
     mapping(uint256 => Position) public positions;
@@ -90,10 +91,15 @@ contract PositionManager {
         _;
     }
 
-    // ============ Constructor ============
+    // ============ Initialization ============
 
-    constructor(address _engine, PerpMarket _market) {
-        factory = msg.sender; // Save factory address for setEngine
+    /**
+     * @notice Initialize the position manager (replaces constructor for clone pattern)
+     * @param _market PerpMarket address
+     * @param _factory Factory address that can set engine
+     */
+    function initialize(PerpMarket _market, address _factory) external initializer {
+        factory = _factory; // Save factory address for setEngine
         market = _market;
         nextPositionId = 1; // Start at 1
     }

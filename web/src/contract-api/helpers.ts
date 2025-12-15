@@ -3,7 +3,7 @@ import { MockUSDCService } from './MockUSDCService';
 import { PerpEngineService } from './PerpEngineService';
 import { PositionManagerService } from './PositionManagerService';
 import { LiquidationEngineService } from './LiquidationEngineService';
-import type { Position, PositionEquity, LiquidationInfo } from './types';
+import type { Position, PositionEquity, LiquidationInfo } from '@velto/contracts';
 
 /**
  * Helper Service
