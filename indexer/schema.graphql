@@ -4,7 +4,6 @@ type Market @entity {
   market: String!
   collateralToken: String!
   createdAt: Timestamp!
-  createdBlock: BigInt!
 }
 
 type Trade @entity {
@@ -20,25 +19,4 @@ type Trade @entity {
   pnl: BigInt
   isLong: Boolean!
   timestamp: Timestamp! @index
-  blockNumber: BigInt!
-  txHash: String!
-}
-
-type PricePoint @entity {
-  id: ID! # engine-blockNumber-logIndex
-  engine: String! @index
-  price: BigInt!
-  timestamp: Timestamp! @index
-  blockNumber: BigInt!
-}
-
-type UserHolding @entity {
-  id: ID! # user-engine
-  user: String! @index
-  engine: String! @index
-  openPositionCount: Int!
-  totalTrades: Int!
-  totalVolume: BigInt!
-  realizedPnl: BigInt!
-  lastTradeAt: Timestamp!
 }
