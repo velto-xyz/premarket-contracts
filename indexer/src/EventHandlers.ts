@@ -117,5 +117,37 @@ PerpEngine.PositionClosed.handler(async ({ event, context }) => {
 });
 
 PerpEngine.PositionLiquidated.handler(async ({ event, context }) => {
-  context.log.info("PositionLiquidated handler called");
+  const id = `${event.block.hash}-${event.logIndex}`;
+  const engine = event.srcAddress;
+  const userAddress = event.params.user;
+  const timestamp = new Date(event.block.timestamp * 1000);
+
+  context.Trade.set({
+    id,
+    engine,
+    user: userAddress,
+    positionId: event.params.positionId,
+    eventType: "liquidate",
+    price: BigInt(0),
+    baseSize: BigInt(0),
+    margin: BigInt(0),
+    notional: BigInt(0),
+    pnl: undefined,
+    isLong: false,
+    timestamp,
+    blockNumber: BigInt(event.block.number),
+    txHash: event.block.hash,
+  });
+
+  const holdingId = `${userAddress}-${engine}`;
+  const existingHolding = await context.UserHolding.get(holdingId);
+
+  if (existingHolding) {
+    context.UserHolding.set({
+      ...existingHolding,
+      openPositionCount: Math.max(0, existingHolding.openPositionCount - 1),
+      totalTrades: existingHolding.totalTrades + 1,
+      lastTradeAt: timestamp,
+    });
+  }
 });
