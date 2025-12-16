@@ -1,27 +1,19 @@
 import { PerpFactory, PerpEngine } from "generated";
 import BigNumber from "bignumber.js";
-import { getAddress } from "viem";
 
-console.log("[Indexer] EventHandlers loaded");
+// ============================================================
+// EVENT HANDLERS LOADED - Module initialized successfully
+// ============================================================
 
-// EIP-55 checksum utility
-function toChecksumAddress(address: string): string {
-  try {
-    return getAddress(address);
-  } catch {
-    console.error("[Checksum] Invalid address:", address);
-    return address;
-  }
-}
+const SUPABASE_URL = typeof process !== 'undefined' ? process.env?.SUPABASE_URL : undefined;
+const SUPABASE_KEY = typeof process !== 'undefined' ? process.env?.SUPABASE_SECRET_KEY : undefined;
+const supabaseEnabled = !!(SUPABASE_URL && SUPABASE_KEY);
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
-
-console.log("[Indexer] Supabase config:", { url: SUPABASE_URL, hasKey: !!SUPABASE_KEY });
+let handlersInitialized = false;
 
 // REST API helpers
 async function supabaseUpsert(table: string, data: any): Promise<{ error: string | null }> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return { error: "not configured" };
+  if (!supabaseEnabled) return { error: "not configured" };
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST",
@@ -61,24 +53,30 @@ async function supabaseUpdate(table: string, data: any, column: string, value: s
   return { error: null };
 }
 
-const supabaseEnabled = !!(SUPABASE_URL && SUPABASE_KEY);
-if (supabaseEnabled) {
-  console.log("[Indexer] Supabase REST configured");
-} else {
-  console.log("[Indexer] Supabase NOT configured");
-}
-
 // Factory: Register new PerpEngine contracts dynamically
 PerpFactory.MarketCreated.contractRegister(({ event, context }) => {
+  if (!handlersInitialized) {
+    context.log.info("=".repeat(60));
+    context.log.info("🚀 EVENT HANDLERS INITIALIZED");
+    context.log.info("=".repeat(60));
+    context.log.info("Module:", "EventHandlers.mts");
+    context.log.info("Supabase:", supabaseEnabled ? "ENABLED" : "DISABLED");
+    context.log.info("BigNumber.js:", "loaded");
+    context.log.info("=".repeat(60));
+    handlersInitialized = true;
+  }
+
+  context.log.info("Registering PerpEngine contract", { engine: event.params.engine });
   context.addPerpEngine(event.params.engine);
 });
 
 PerpFactory.MarketCreated.handler(async ({ event, context }) => {
+  context.log.info("Supabase enabled:", supabaseEnabled);
   context.Market.set({
     id: event.params.marketIndex.toString(),
-    engine: toChecksumAddress(event.params.engine),
-    market: toChecksumAddress(event.params.market),
-    collateralToken: toChecksumAddress(event.params.collateralToken),
+    engine: event.params.engine,
+    market: event.params.market,
+    collateralToken: event.params.collateralToken,
     createdAt: new Date(event.block.timestamp * 1000),
     createdBlock: BigInt(event.block.number),
   });
@@ -93,8 +91,8 @@ PerpEngine.PositionOpened.handler(async ({ event, context }) => {
   const notional = price.times(baseSize);
 
   const id = `${event.block.hash}-${event.logIndex}`;
-  const engine = toChecksumAddress(event.srcAddress);
-  const userAddress = toChecksumAddress(event.params.user);
+  const engine = event.srcAddress;
+  const userAddress = event.params.user;
   const timestamp = new Date(event.block.timestamp * 1000);
 
   // Store in Envio
@@ -140,7 +138,7 @@ PerpEngine.PositionOpened.handler(async ({ event, context }) => {
 
   // Push to Supabase
   if (supabaseEnabled) {
-    console.log("[Supabase] Pushing PositionOpened:", { id, engine, userAddress });
+    context.log.info("[Supabase] Pushing PositionOpened:", { id, engine, userAddress });
 
     const [tradeRes, positionRes, walletRes] = await Promise.all([
       supabaseUpsert("trades", {
@@ -175,10 +173,10 @@ PerpEngine.PositionOpened.handler(async ({ event, context }) => {
       supabaseUpsert("wallets", { address: userAddress }),
     ]);
 
-    if (tradeRes.error) console.error("[Supabase] trades error:", tradeRes.error);
-    if (positionRes.error) console.error("[Supabase] positions error:", positionRes.error);
-    if (walletRes.error) console.error("[Supabase] wallets error:", walletRes.error);
-    if (!tradeRes.error && !positionRes.error) console.log("[Supabase] PositionOpened pushed successfully");
+    if (tradeRes.error) context.log.error("[Supabase] trades error:", tradeRes.error);
+    if (positionRes.error) context.log.error("[Supabase] positions error:", positionRes.error);
+    if (walletRes.error) context.log.error("[Supabase] wallets error:", walletRes.error);
+    if (!tradeRes.error && !positionRes.error) context.log.info("[Supabase] PositionOpened pushed successfully");
   }
 });
 
@@ -187,8 +185,8 @@ PerpEngine.PositionClosed.handler(async ({ event, context }) => {
   const pnl = new BigNumber(event.params.totalPnl.toString()).div(1e18);
 
   const id = `${event.block.hash}-${event.logIndex}`;
-  const engine = toChecksumAddress(event.srcAddress);
-  const userAddress = toChecksumAddress(event.params.user);
+  const engine = event.srcAddress;
+  const userAddress = event.params.user;
   const timestamp = new Date(event.block.timestamp * 1000);
 
   // Store in Envio
@@ -233,7 +231,7 @@ PerpEngine.PositionClosed.handler(async ({ event, context }) => {
 
   // Push to Supabase
   if (supabaseEnabled) {
-    console.log("[Supabase] Pushing PositionClosed:", { id, engine, userAddress });
+    context.log.info("[Supabase] Pushing PositionClosed:", { id, engine, userAddress });
 
     const [tradeRes, positionRes] = await Promise.all([
       supabaseUpsert("trades", {
@@ -258,16 +256,16 @@ PerpEngine.PositionClosed.handler(async ({ event, context }) => {
       }, "id", event.params.positionId.toString()),
     ]);
 
-    if (tradeRes.error) console.error("[Supabase] trades error:", tradeRes.error);
-    if (positionRes.error) console.error("[Supabase] positions error:", positionRes.error);
-    if (!tradeRes.error && !positionRes.error) console.log("[Supabase] PositionClosed pushed successfully");
+    if (tradeRes.error) context.log.error("[Supabase] trades error:", tradeRes.error);
+    if (positionRes.error) context.log.error("[Supabase] positions error:", positionRes.error);
+    if (!tradeRes.error && !positionRes.error) context.log.info("[Supabase] PositionClosed pushed successfully");
   }
 });
 
 PerpEngine.PositionLiquidated.handler(async ({ event, context }) => {
   const id = `${event.block.hash}-${event.logIndex}`;
-  const engine = toChecksumAddress(event.srcAddress);
-  const userAddress = toChecksumAddress(event.params.user);
+  const engine = event.srcAddress;
+  const userAddress = event.params.user;
   const timestamp = new Date(event.block.timestamp * 1000);
 
   // Store in Envio
@@ -303,7 +301,7 @@ PerpEngine.PositionLiquidated.handler(async ({ event, context }) => {
 
   // Push to Supabase
   if (supabaseEnabled) {
-    console.log("[Supabase] Pushing PositionLiquidated:", { id, engine, userAddress });
+    context.log.info("[Supabase] Pushing PositionLiquidated:", { id, engine, userAddress });
 
     const [tradeRes, positionRes] = await Promise.all([
       supabaseUpsert("trades", {
@@ -328,8 +326,8 @@ PerpEngine.PositionLiquidated.handler(async ({ event, context }) => {
       }, "id", event.params.positionId.toString()),
     ]);
 
-    if (tradeRes.error) console.error("[Supabase] trades error:", tradeRes.error);
-    if (positionRes.error) console.error("[Supabase] positions error:", positionRes.error);
-    if (!tradeRes.error && !positionRes.error) console.log("[Supabase] PositionLiquidated pushed successfully");
+    if (tradeRes.error) context.log.error("[Supabase] trades error:", tradeRes.error);
+    if (positionRes.error) context.log.error("[Supabase] positions error:", positionRes.error);
+    if (!tradeRes.error && !positionRes.error) context.log.info("[Supabase] PositionLiquidated pushed successfully");
   }
 });

@@ -4,13 +4,13 @@ name: velto-perp-indexer
 contracts:
   # Static: Factory deploys new markets
   - name: PerpFactory
-    handler: src/EventHandlers.mts
+    handler: src/EventHandlers.ts
     events:
       - event: MarketCreated(uint256 indexed marketIndex, address indexed engine, address market, address collateralToken)
 
   # Dynamic: PerpEngine registered on MarketCreated
   - name: PerpEngine
-    handler: src/EventHandlers.mts
+    handler: src/EventHandlers.ts
     events:
       - event: PositionOpened(uint256 indexed positionId, address indexed user, bool indexed isLong, uint256 totalToUse, uint256 margin, uint256 fee, uint256 leverage, uint256 baseSize, uint256 entryPrice)
       - event: PositionClosed(uint256 indexed positionId, address indexed user, int256 totalPnl, uint256 avgClosePrice)
