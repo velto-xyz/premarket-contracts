@@ -13,11 +13,11 @@ type Trade @entity {
   user: String! @index
   positionId: BigInt! @index
   eventType: String! # "open" | "close" | "liquidate"
-  price: BigDecimal!
-  baseSize: BigDecimal!
-  margin: BigDecimal!
-  notional: BigDecimal!
-  pnl: BigDecimal
+  price: BigInt!
+  baseSize: BigInt!
+  margin: BigInt!
+  notional: BigInt!
+  pnl: BigInt
   isLong: Boolean!
   timestamp: Timestamp! @index
   blockNumber: BigInt!
@@ -27,7 +27,7 @@ type Trade @entity {
 type PricePoint @entity {
   id: ID! # engine-blockNumber-logIndex
   engine: String! @index
-  price: BigDecimal!
+  price: BigInt!
   timestamp: Timestamp! @index
   blockNumber: BigInt!
 }
@@ -38,7 +38,7 @@ type UserHolding @entity {
   engine: String! @index
   openPositionCount: Int!
   totalTrades: Int!
-  totalVolume: BigDecimal!
-  realizedPnl: BigDecimal!
+  totalVolume: BigInt!
+  realizedPnl: BigInt!
   lastTradeAt: Timestamp!
 }
