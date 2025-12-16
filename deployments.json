@@ -12,10 +12,15 @@
     "usdc": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
   },
   "84532": {
-    "factory": "0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1",
-    "liquidationEngine": "0x3aDdEb54ddd43Eb40235eC32DfA7928F28A44bb5",
-    "fundingManager": "0x150FE8DBB943c372F3e8C31d9c89f1E6A13cBBFd",
+    "factory": "0xE0Bfa341Ef912FF15569B69c4cbEfE9CF8837e11",
+    "liquidationEngine": "0x0e0BED8DF7185cE8B5286C08d934A298091f3793",
+    "fundingManager": "0x40019F9b7Ad27C019da556f956aa24039fC5dA26",
+    "perpMarketImpl": "0x3e42C3925088BC4B2EeB759DfA480f9707692934",
+    "positionManagerImpl": "0x8Ef6fc287d53E56645450cB119bCCB7832551Aa7",
+    "perpEngineImpl": "0x79d968d9017B96f202aD4673A2c1BBbdc905A4ca",
     "deployer": "0x731D7B95b83cb09b699BdF522D1C2Cfba5CA3f5a",
-    "timestamp": 1764939636
+    "timestamp": 1765900356,
+    "deploymentBlock": 35066034,
+    "usdc": "0x308e483afDD225D6cb7bF4d44B8e4a03DFD9c0De"
   }
 }

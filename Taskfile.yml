@@ -43,6 +43,7 @@ tasks:
     desc: Deploy to Sepolia testnet
     cmds:
       - forge script script/01_DeployCore.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
+      - forge script script/03_DeployMockUSDC.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify
       - task: sdk:build
 
   # ============ SDK ============

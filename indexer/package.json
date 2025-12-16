@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "codegen": "envio codegen",
-    "dev": "envio dev",
+    "codegen": "envio codegen --config config.local.yaml",
+    "codegen:prod": "envio codegen",
+    "dev": "envio dev --config config.local.yaml",
     "start": "envio start",
     "stop": "envio stop"
   },

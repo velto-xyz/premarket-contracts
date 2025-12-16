@@ -17,13 +17,20 @@ contracts:
       - event: PositionLiquidated(uint256 indexed positionId, address indexed user, address indexed liquidator, uint256 liqFee)
 
 chains:
-  - id: 84532  # Base Sepolia
-    start_block: 35066034
+  - id: 31337  # Anvil local
+    start_block: 0
     rpc_config:
-      url: https://sepolia.base.org
+      url: http://localhost:8545
     contracts:
       - name: PerpFactory
         address:
-          - "0xE0Bfa341Ef912FF15569B69c4cbEfE9CF8837e11"
+          - "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
       - name: PerpEngine
         # No address - dynamically registered via MarketCreated
+
+  # - id: 84532  # Base Sepolia
+  #   start_block: 0
+  #   contracts:
+  #     - name: PerpFactory
+  #       address:
+  #         - "0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1"
