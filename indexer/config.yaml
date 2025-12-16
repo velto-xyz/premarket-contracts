@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: velto-perp-indexer
+
+contracts:
+  # Static: Factory deploys new markets
+  - name: PerpFactory
+    handler: src/EventHandlers.mts
+    events:
+      - event: MarketCreated(uint256 indexed marketIndex, address indexed engine, address market, address collateralToken)
+
+  # Dynamic: PerpEngine registered on MarketCreated
+  - name: PerpEngine
+    handler: src/EventHandlers.mts
+    events:
+      - event: PositionOpened(uint256 indexed positionId, address indexed user, bool indexed isLong, uint256 totalToUse, uint256 margin, uint256 fee, uint256 leverage, uint256 baseSize, uint256 entryPrice)
+      - event: PositionClosed(uint256 indexed positionId, address indexed user, int256 totalPnl, uint256 avgClosePrice)
+      - event: PositionLiquidated(uint256 indexed positionId, address indexed user, address indexed liquidator, uint256 liqFee)
+
+chains:
+  - id: 31337  # Anvil local
+    start_block: 0
+    rpc_config:
+      url: http://localhost:8545
+    contracts:
+      - name: PerpFactory
+        address:
+          - "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+      - name: PerpEngine
+        # No address - dynamically registered via MarketCreated
+
+  # - id: 84532  # Base Sepolia
+  #   start_block: 0
+  #   contracts:
+  #     - name: PerpFactory
+  #       address:
+  #         - "0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1"

@@ -62,8 +62,8 @@ contract SetupLocal is Script {
         console.log("   Eve:", eve);
 
         // 4. Mint test USDC
-        console.log("\n4. Minting test USDC (10,000 each)...");
-        uint256 mintAmount = 10_000 * 1e6; // 10k USDC (6 decimals)
+        console.log("\n4. Minting test USDC (1M each)...");
+        uint256 mintAmount = 1_000_000 * 1e6; // 1M USDC (6 decimals)
 
         usdc.mint(alice, mintAmount);
         usdc.mint(bob, mintAmount);
@@ -71,7 +71,7 @@ contract SetupLocal is Script {
         usdc.mint(dave, mintAmount);
         usdc.mint(eve, mintAmount);
 
-        console.log("   Minted 10,000 USDC to 5 accounts");
+        console.log("   Minted 1M to 5 accounts");
 
         vm.stopBroadcast();
 

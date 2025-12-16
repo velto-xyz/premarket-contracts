@@ -9,7 +9,15 @@ fi
 # Cleanup on exit
 cleanup() {
   echo ""
-  echo "🛑 Stopping Anvil..."
+  echo "🛑 Stopping services..."
+
+  # Stop indexer
+  if [ -f .indexer.pid ]; then
+    kill $(cat .indexer.pid) 2>/dev/null || true
+    rm .indexer.pid
+  fi
+
+  # Stop anvil
   if [ -f .anvil.pid ]; then
     kill $(cat .anvil.pid) 2>/dev/null || true
     rm .anvil.pid
@@ -38,9 +46,21 @@ echo ""
 echo "🔨 Building SDK..."
 cd sdk && npm run build && cd ..
 
+# Setup and start indexer
 echo ""
-echo "✅ Local testnet ready at http://127.0.0.1:8545"
-echo "Press Ctrl+C to stop"
+echo "📊 Setting up indexer..."
+cd indexer
+npm run dev > ../indexer.log 2>&1 &
+INDEXER_PID=$!
+echo $INDEXER_PID > ../.indexer.pid
+cd ..
+
+echo ""
+echo "✅ Local testnet ready:"
+echo "   • Anvil RPC:     http://127.0.0.1:8545"
+echo "   • Indexer API:   http://127.0.0.1:8080/graphql"
+echo ""
+echo "Press Ctrl+C to stop all services"
 echo ""
 
 # Wait for anvil process (keeps script running)

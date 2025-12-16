@@ -31,7 +31,14 @@ tasks:
     cmds:
       - ./dev/stop-anvil.sh
 
-  # ============ Testnet Deployment ============
+  # ============ Deployment ============
+  deploy:local:
+    desc: Deploy to local Anvil (requires Anvil running)
+    cmds:
+      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 forge script script/01_DeployCore.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 forge script script/02_SetupLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+      - task: sdk:build
+
   deploy:testnet:
     desc: Deploy to Sepolia testnet
     cmds:
@@ -56,3 +63,24 @@ tasks:
     dir: sdk
     cmds:
       - npm publish
+
+  # ============ Indexer ============
+  indexer:dev:
+    desc: Start indexer in dev mode
+    dir: indexer
+    cmds:
+      - npm run dev
+
+  indexer:clean:
+    desc: Clean indexer state in dev mode
+    dir: indexer
+    cmds:
+      - npm run stop
+
+  indexer:test:
+    desc: Smoke test indexer GraphQL API
+    cmds:
+      - |
+        curl -X POST http://localhost:8080/graphql \
+          -H "Content-Type: application/json" \
+          -d '{"query":"{ markets { items { id engine } } }"}'

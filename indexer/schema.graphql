@@ -1,0 +1,44 @@
+type Market @entity {
+  id: ID! # marketIndex
+  engine: String! @index
+  market: String!
+  collateralToken: String!
+  createdAt: Timestamp!
+  createdBlock: BigInt!
+}
+
+type Trade @entity {
+  id: ID! # txHash-logIndex
+  engine: String! @index
+  user: String! @index
+  positionId: BigInt! @index
+  eventType: String! # "open" | "close" | "liquidate"
+  price: BigDecimal!
+  baseSize: BigDecimal!
+  margin: BigDecimal!
+  notional: BigDecimal!
+  pnl: BigDecimal
+  isLong: Boolean!
+  timestamp: Timestamp! @index
+  blockNumber: BigInt!
+  txHash: String!
+}
+
+type PricePoint @entity {
+  id: ID! # engine-blockNumber-logIndex
+  engine: String! @index
+  price: BigDecimal!
+  timestamp: Timestamp! @index
+  blockNumber: BigInt!
+}
+
+type UserHolding @entity {
+  id: ID! # user-engine
+  user: String! @index
+  engine: String! @index
+  openPositionCount: Int!
+  totalTrades: Int!
+  totalVolume: BigDecimal!
+  realizedPnl: BigDecimal!
+  lastTradeAt: Timestamp!
+}

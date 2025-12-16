@@ -1,0 +1,24 @@
+{
+  "name": "velto-perp-indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "stop": "envio stop"
+  },
+  "dependencies": {
+    "bignumber.js": "^9.1.2",
+    "envio": "3.0.0-alpha.3",
+    "viem": "^2.21.54"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "generated": "./generated"
+  }
+}
